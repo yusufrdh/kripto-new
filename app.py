@@ -321,6 +321,19 @@ def load_rsa_keys():
         return load_rsa_keys()
         
     return private_key, public_key
+# -------------------------------------------------------------
+# FUNGSI HELPER BARU UNTUK OTORITAS
+# -------------------------------------------------------------
+def is_admin():
+    """Memeriksa apakah user yang sedang login adalah admin."""
+    if "username" not in session:
+        return False
+    username = session["username"]
+    user_db = load_data(get_user_db_path())
+    # Memastikan data role ada, jika tidak ada dianggap member
+    return user_db.get(username, {}).get("role") == "admin"
+# -------------------------------------------------------------
+
 
 # =====================================================================
 # PEMUATAN AWAL APLIKASI
@@ -416,7 +429,8 @@ def register():
             
         # MENGGUNAKAN SHA3-256
         user_db[username] = {
-            "password": hash_data(password)
+            "password": hash_data(password),
+            "role": "member" # MODIFIED: Tambahkan role default 'member'
         }
         save_data(user_db, get_user_db_path())
         
@@ -746,12 +760,28 @@ def encrypt_file():
 @app.route("/history")
 @login_required
 def history():
-    """Halaman untuk melihat riwayat enkripsi."""
+    """MODIFIED: Halaman untuk melihat riwayat enkripsi (Semua untuk Admin, Milik Sendiri untuk Member)."""
     history_db = load_data(get_history_db_path())
-    user_history = history_db.get(session["username"], [])
-    user_history.reverse() 
     
-    return render_template("history.html", history_list=user_history)
+    if is_admin():
+        # ADMIN: Mengumpulkan semua history dari semua user
+        all_history = []
+        for username, user_list in history_db.items():
+            for item in user_list:
+                item_copy = item.copy()
+                item_copy["user"] = username # Tambahkan info user
+                all_history.append(item_copy)
+        user_history = all_history
+        # Sorting history. Karena timestamp hanya random base64, ini akan mengurutkan secara leksikografis (sebagai upaya terbaik)
+        user_history.sort(key=lambda x: x["timestamp"], reverse=True) 
+        title = "Riwayat Aktivitas SEMUA Pengguna (Admin)"
+    else:
+        # MEMBER: Hanya melihat history-nya sendiri
+        user_history = history_db.get(session["username"], [])
+        user_history.reverse() 
+        title = "Riwayat Aktivitas Anda"
+    
+    return render_template("history.html", history_list=user_history, title=title) # MODIFIED: Meneruskan 'title'
 
 # =====================================================================
 # RUTE DOWNLOAD
