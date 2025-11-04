@@ -1,9 +1,10 @@
 import hashlib
 from Crypto.Cipher import AES
+from Crypto.Cipher import PKCS1_OAEP # New import for RSA
+from Crypto.PublicKey import RSA # New import for RSA
 from Crypto.Random import get_random_bytes
-from Crypto.Util.Padding import pad, unpad
+# from Crypto.Util.Padding import pad, unpad # GCM tidak memerlukannya
 from PIL import Image
-from PIL.PngImagePlugin import PngInfo
 import base64
 import json
 import os
@@ -21,22 +22,30 @@ from flask import (
     send_file,
 )
 from werkzeug.utils import secure_filename
+import numpy as np # New import for LSB pixel manipulation
 
 # --- Konfigurasi Flask ---
 app = Flask(__name__)
-# Menggunakan secret_key dari kodingan 'lama' Anda
 app.secret_key = "kripto_secure_app" 
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["GENERATED_FOLDER"] = "generated"
-app.config["DB_FOLDER"] = "database"  # Folder untuk menyimpan JSON
+app.config["DB_FOLDER"] = "database"
 
 # Buat folder jika belum ada
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 os.makedirs(app.config["GENERATED_FOLDER"], exist_ok=True)
 os.makedirs(app.config["DB_FOLDER"], exist_ok=True)
 
+# Kunci Vigenere Tetap untuk Enkripsi Teks
+VIGENERE_KEY = "CRYPTOGRAPHY"
+
+# Path Kunci RSA
+RSA_PRIVATE_KEY_PATH = os.path.join(app.config["DB_FOLDER"], "rsa_private.pem")
+RSA_PUBLIC_KEY_PATH = os.path.join(app.config["DB_FOLDER"], "rsa_public.pem")
+
+
 # =====================================================================
-# FUNGSI HELPER (Database JSON)
+# FUNGSI HELPER (Database JSON - Tidak Berubah)
 # =====================================================================
 
 def get_user_db_path():
@@ -72,25 +81,28 @@ def add_history(username, action, original_file, generated_file=None):
         "action": action,
         "original_file": original_file,
         "generated_file": generated_file,
-        "timestamp": base64.b64encode(get_random_bytes(6)).decode('utf-8') # Contoh timestamp unik
+        "timestamp": base64.b64encode(get_random_bytes(6)).decode('utf-8')
     })
     save_data(history_data, db_path)
 
 # =====================================================================
-# FUNGSI HELPER (Kriptografi & Steganografi)
+# FUNGSI HELPER (Kriptografi & Steganografi BARU)
 # =====================================================================
 
+# --- 1. LOGIN (SHA-3) ---
 def hash_data(data):
-    """Hash password menggunakan SHA256."""
-    return hashlib.sha256(data.encode()).hexdigest()
+    """Hash password menggunakan SHA3-256."""
+    return hashlib.sha3_256(data.encode()).hexdigest()
 
-def save_key(key, filename="key.bin"):
+# --- 2. AES KEY UTAMA & PENYIMPANAN ---
+# AES Key (32 bytes = 256-bit) digunakan untuk Enkripsi Profil, Teks, dan Steganografi
+def save_key(key, filename="aes_key.bin"):
     """Menyimpan AES key."""
     key_path = os.path.join(app.config["DB_FOLDER"], filename)
     with open(key_path, "wb") as file:
         file.write(key)
 
-def load_key(filename="key.bin"):
+def load_key(filename="aes_key.bin"):
     """Memuat AES key."""
     key_path = os.path.join(app.config["DB_FOLDER"], filename)
     if os.path.exists(key_path):
@@ -98,65 +110,239 @@ def load_key(filename="key.bin"):
             return file.read()
     return None
 
-def aes_encrypt_bytes(key, data_bytes):
-    """Enkripsi data (bytes) menggunakan AES CBC."""
-    cipher = AES.new(key, AES.MODE_CBC)
-    ciphertext = cipher.encrypt(pad(data_bytes, AES.block_size))
-    # Mengembalikan IV (Initial Vector) + Ciphertext
-    return cipher.iv + ciphertext
+# --- 3. AES-256 GCM (Untuk Profil, Teks, Steganografi, Hybrid File) ---
+def aes_encrypt_gcm(key, data_bytes):
+    """Enkripsi data (bytes) menggunakan AES GCM (256-bit)."""
+    cipher = AES.new(key, AES.MODE_GCM)
+    ciphertext, tag = cipher.encrypt_and_digest(data_bytes)
+    # Mengembalikan Nonce + Tag + Ciphertext
+    return cipher.nonce + tag + ciphertext
 
-def aes_decrypt_bytes(key, ciphertext_with_iv):
-    """Dekripsi data (bytes) dari AES CBC."""
-    iv = ciphertext_with_iv[: AES.block_size]
-    ciphertext = ciphertext_with_iv[AES.block_size :]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    # Mengembalikan data bytes original
-    return unpad(cipher.decrypt(ciphertext), AES.block_size)
+def aes_decrypt_gcm(key, ciphertext_with_nonce_tag):
+    """Dekripsi data (bytes) dari AES GCM (256-bit)."""
+    NONCE_LEN = 16
+    TAG_LEN = 16
+    
+    nonce = ciphertext_with_nonce_tag[:NONCE_LEN]
+    tag = ciphertext_with_nonce_tag[NONCE_LEN:NONCE_LEN + TAG_LEN]
+    ciphertext = ciphertext_with_nonce_tag[NONCE_LEN + TAG_LEN:]
+    
+    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+    return cipher.decrypt_and_verify(ciphertext, tag)
 
-def steganography_encrypt(image_path, message, output_path):
-    """Menyembunyikan pesan di metadata PNG."""
+
+# --- 4. VIGENERE CIPHER (Bagian dari Algoritma Teks Super) ---
+def vigenere_encrypt(plaintext, key):
+    """Enkripsi menggunakan Vigenere."""
+    key = key.upper().replace(" ", "")
+    key_len = len(key)
+    ciphertext = ""
+    key_index = 0
+    for char in plaintext:
+        if 'A' <= char.upper() <= 'Z':
+            shift = ord(key[key_index % key_len]) - ord('A')
+            
+            if 'a' <= char <= 'z':
+                ciphertext += chr(((ord(char) - ord('a') + shift) % 26) + ord('a'))
+            elif 'A' <= char <= 'Z':
+                ciphertext += chr(((ord(char) - ord('A') + shift) % 26) + ord('A'))
+            
+            key_index += 1
+        else:
+            ciphertext += char
+            
+    return ciphertext
+
+def vigenere_decrypt(ciphertext, key):
+    """Dekripsi menggunakan Vigenere."""
+    key = key.upper().replace(" ", "")
+    key_len = len(key)
+    plaintext = ""
+    key_index = 0
+    for char in ciphertext:
+        if 'A' <= char.upper() <= 'Z':
+            shift = ord(key[key_index % key_len]) - ord('A')
+            
+            if 'a' <= char <= 'z':
+                plaintext += chr(((ord(char) - ord('a') - shift) % 26) + ord('a'))
+            elif 'A' <= char <= 'Z':
+                plaintext += chr(((ord(char) - ord('A') - shift) % 26) + ord('A'))
+            
+            key_index += 1
+        else:
+            plaintext += char
+            
+    return plaintext
+
+# --- 5. LSB (Untuk Steganografi) ---
+def to_bit_array(data):
+    """Helper: Konversi bytes ke array bit."""
+    bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
+    return bits
+
+def from_bit_array(bits):
+    """Helper: Konversi array bit ke bytes."""
+    if len(bits) % 8 != 0:
+        bits = np.pad(bits, (0, 8 - (len(bits) % 8)), 'constant', constant_values=0)
+    return np.packbits(bits).tobytes()
+
+def lsb_hide(image_path, secret_bytes, output_path):
+    """LSB 256 GCM: Menyembunyikan pesan di 1 bit LSB."""
     try:
-        img = Image.open(image_path)
-        metadata = PngInfo()
-        metadata.add_text("secret_message", message) 
-        img.save(output_path, "PNG", pnginfo=metadata)
+        img = Image.open(image_path).convert("RGB")
+        img_np = np.array(img)
+        
+        data_len = len(secret_bytes)
+        len_bytes = data_len.to_bytes(4, byteorder='big')
+        full_data = len_bytes + secret_bytes
+        data_bits = to_bit_array(full_data)
+        
+        required_pixels = len(data_bits) // 3 + (1 if len(data_bits) % 3 > 0 else 0)
+        max_pixels = img_np.shape[0] * img_np.shape[1]
+        
+        if required_pixels > max_pixels:
+            raise ValueError(f"Pesan terlalu besar. Perlu {required_pixels} piksel.")
+        
+        data_index = 0
+        # Iterasi dan Sembunyikan bit di LSB
+        for i in range(img_np.shape[0]):
+            for j in range(img_np.shape[1]):
+                pixel = img_np[i, j]
+                new_pixel = pixel.copy()
+                
+                for k in range(3): # R, G, B channels
+                    if data_index < len(data_bits):
+                        # Ganti LSB
+                        new_pixel[k] = (pixel[k] & 0xFE) | data_bits[data_index]
+                        data_index += 1
+                
+                img_np[i, j] = new_pixel
+                if data_index >= len(data_bits):
+                    break
+            if data_index >= len(data_bits):
+                break
+                
+        new_img = Image.fromarray(img_np, 'RGB')
+        new_img.save(output_path, "PNG")
         return True
     except Exception as e:
-        print(f"Error steganography_encrypt: {e}")
+        print(f"Error lsb_hide: {e}")
         return False
 
-def steganography_decrypt(image_path):
-    """Mengambil pesan dari metadata PNG."""
+def lsb_retrieve(image_path):
+    """LSB 256 GCM: Mengambil pesan tersembunyi."""
     try:
-        img = Image.open(image_path)
-        # Ganti 'message' menjadi 'secret_message' agar tidak bentrok
-        message = img.text.get("secret_message")
-        if message:
-            return message
-        return None
+        img = Image.open(image_path).convert("RGB")
+        img_np = np.array(img)
+        
+        # 1. Ambil panjang data (32 bits = 4 bytes)
+        len_bits = []
+        data_index = 0
+        found_length = False
+        
+        for i in range(img_np.shape[0]):
+            for j in range(img_np.shape[1]):
+                pixel = img_np[i, j]
+                for k in range(3): 
+                    len_bits.append(pixel[k] & 0x01)
+                    data_index += 1
+                    if len(len_bits) == 32:
+                        found_length = True
+                        break
+                if found_length: break
+            if found_length: break
+        
+        if len(len_bits) < 32: return None 
+             
+        len_bytes = from_bit_array(np.array(len_bits, dtype=np.uint8))
+        data_len = int.from_bytes(len_bytes, byteorder='big')
+        
+        # 2. Ambil pesan (data_len * 8 bits)
+        required_bits = data_len * 8
+        secret_bits = []
+        
+        start_pixel_idx = data_index // 3
+        start_channel_idx = data_index % 3
+
+        for i in range(img_np.shape[0]):
+            for j in range(img_np.shape[1]):
+                if i * img_np.shape[1] + j < start_pixel_idx: continue
+                    
+                pixel = img_np[i, j]
+                start_k = start_channel_idx if i * img_np.shape[1] + j == start_pixel_idx else 0
+                
+                for k in range(start_k, 3):
+                    if len(secret_bits) < required_bits:
+                        secret_bits.append(pixel[k] & 0x01)
+                    else:
+                        break
+                if len(secret_bits) >= required_bits: break
+            if len(secret_bits) >= required_bits: break
+
+        if len(secret_bits) < required_bits:
+            raise Exception("Pesan terpotong atau gambar rusak.")
+            
+        # 3. Konversi bit pesan menjadi bytes
+        secret_bytes = from_bit_array(np.array(secret_bits, dtype=np.uint8))
+        return secret_bytes
+        
     except Exception as e:
-        print(f"Error steganography_decrypt: {e}")
+        print(f"Error lsb_retrieve: {e}")
         return None
+
+# --- 6. RSA KEY MANAGEMENT (Untuk File Algorithm) ---
+def generate_rsa_keys():
+    """Menghasilkan pasangan kunci RSA (2048-bit)."""
+    if not os.path.exists(RSA_PRIVATE_KEY_PATH):
+        print("Generating new RSA keys...")
+        key = RSA.generate(2048)
+        private_key = key.export_key()
+        public_key = key.publickey().export_key()
+        
+        with open(RSA_PRIVATE_KEY_PATH, "wb") as f:
+            f.write(private_key)
+        with open(RSA_PUBLIC_KEY_PATH, "wb") as f:
+            f.write(public_key)
+
+def load_rsa_keys():
+    """Memuat kunci RSA publik dan privat."""
+    private_key = public_key = None
+    try:
+        with open(RSA_PRIVATE_KEY_PATH, "rb") as f:
+            private_key = RSA.import_key(f.read())
+        with open(RSA_PUBLIC_KEY_PATH, "rb") as f:
+            public_key = RSA.import_key(f.read())
+    except FileNotFoundError:
+        generate_rsa_keys()
+        return load_rsa_keys()
+    except Exception as e:
+        print(f"Error loading RSA keys: {e}. Generating new keys.")
+        generate_rsa_keys()
+        return load_rsa_keys()
+        
+    return private_key, public_key
 
 # =====================================================================
 # PEMUATAN AWAL APLIKASI
 # =====================================================================
 
-# Memuat atau membuat AES key utama saat aplikasi dimulai
+# Memuat atau membuat AES key utama (Sekarang AES-256)
 aes_key = load_key()
-if aes_key is None:
-    aes_key = get_random_bytes(16) # AES-128
+if aes_key is None or len(aes_key) != 32: 
+    aes_key = get_random_bytes(32) # AES-256 (32 bytes)
     save_key(aes_key)
 
+# Memuat atau membuat pasangan kunci RSA
+private_rsa_key, public_rsa_key = load_rsa_keys()
+
 # =====================================================================
-# DECORATOR (PENGECEK LOGIN)
+# DECORATOR (PENGECEK LOGIN - Tidak Berubah)
 # =====================================================================
 
 def login_required(f):
     """Decorator untuk halaman yang memerlukan login."""
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        # Menggunakan 'logged_in' sesuai standar kodingan baru
         if "logged_in" not in session: 
             flash("Anda harus login untuk mengakses halaman ini.", "error")
             return redirect(url_for("login"))
@@ -167,86 +353,68 @@ def login_required(f):
 # RUTE UTAMA (Index, Login, Register, Logout)
 # =====================================================================
 
-# app.py
-
-# app.py
-
-# Fungsi dekripsi helper (bisa dibuat di atas, tapi kita masukkan ke dalam index() dulu)
+# Fungsi dekripsi helper (menggunakan AES-256 GCM)
 def decrypt_profile_data(encrypted_b64):
-    """Dekripsi data Base64 terenkripsi menjadi string."""
+    """Dekripsi data Base64 terenkripsi menjadi string menggunakan AES-256 GCM."""
     if not encrypted_b64:
-        return None # Kembalikan None jika tidak ada data
+        return None
     try:
         encrypted_bytes = base64.b64decode(encrypted_b64)
-        decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_bytes)
+        decrypted_bytes = aes_decrypt_gcm(aes_key, encrypted_bytes)
         return decrypted_bytes.decode('utf-8')
     except Exception as e:
         print(f"Error dekripsi data: {e}")
-        return None # Kembalikan None jika dekripsi gagal
-
+        return None
 
 @app.route("/")
 def index():
     """Halaman utama / landing page."""
-    
-    display_name = "Pengguna" # Default
-    
+    display_name = "Pengguna"
     if "logged_in" in session:
         username = session["username"]
         user_db = load_data(get_user_db_path())
-        
-        # --- START: Logika Dekripsi untuk display_name ---
         decrypted_fullname = None
         if username in user_db and user_db[username].get("fullname"):
             encrypted_fn_b64 = user_db[username]["fullname"]
             decrypted_fullname = decrypt_profile_data(encrypted_fn_b64)
-        
-        # Cari Fullname yang sudah didekripsi, jika tidak ada, gunakan Username
         if decrypted_fullname:
             display_name = decrypted_fullname
         else:
             display_name = username
-        # --- END: Logika Dekripsi untuk display_name ---
-            
         return render_template("index.html", display_name=display_name)
-    
-    # Biarkan seperti ini untuk menampilkan "Selamat Datang" tanpa nama jika tidak login
     return render_template("index.html", display_name=display_name)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Halaman login user (dari kodingan baru)."""
+    """Halaman login user (menggunakan SHA3-256)."""
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        
         user_db = load_data(get_user_db_path())
         
+        # MENGGUNAKAN SHA3-256
         if username in user_db and user_db[username]["password"] == hash_data(password):
             session["logged_in"] = True
             session["username"] = username
             flash("Login berhasil! Selamat datang.", "success")
-            # UBAH: Arahkan ke index (beranda)
             return redirect(url_for("index")) 
         else:
             flash("Login gagal! Username atau password salah.", "error")
-            
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Halaman registrasi user (dari kodingan baru)."""
+    """Halaman registrasi user (menggunakan SHA3-256)."""
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        
         user_db = load_data(get_user_db_path())
         
         if username in user_db:
             flash("Username sudah terdaftar, silakan gunakan username lain.", "error")
             return redirect(url_for("register"))
             
-        # Tambah user baru
+        # MENGGUNAKAN SHA3-256
         user_db[username] = {
             "password": hash_data(password)
         }
@@ -257,70 +425,53 @@ def register():
         
     return render_template("register.html")
 
-# app.py
-
 @app.route("/logout")
 @login_required
 def logout():
     """Proses logout user."""
     session.clear()
     flash("Anda telah berhasil logout.", "success")
-    # UBAH: Arahkan langsung ke halaman login setelah logout
     return redirect(url_for("login"))
 
 # =====================================================================
-# RUTE FITUR APLIKASI (Sesuai Gambar Anda)
+# RUTE FITUR APLIKASI (Modifikasi Enkripsi/Dekripsi)
 # =====================================================================
 
-# yusufrdh/kripto-new/kripto-new-27863cc49d61687d36e15b957b08e6369ae8a35a/app.py
-
-# ... (Baris 248)
-# [Rute Profil/Dashboard] - Tampilan Statis Data
 @app.route("/profile") 
 @login_required
 def profile_dashboard():
-    """Halaman dashboard profil (menampilkan data statis)."""
+    """Halaman dashboard profil (menampilkan data terdekripsi)."""
     
     username = session["username"]
     user_db = load_data(get_user_db_path())
     user_data = user_db.get(username, {})
     
-    # === START: Tambahkan Logika Dekripsi Data Profil di Sini ===
-    def decrypt_profile_data(encrypted_b64):
-        """Dekripsi data Base64 terenkripsi menjadi string."""
+    def decrypt_profile_data_safe(encrypted_b64):
+        """Dekripsi data Base64 terenkripsi menjadi string untuk tampilan."""
         if not encrypted_b64:
             return "Belum Diisi"
         try:
             encrypted_bytes = base64.b64decode(encrypted_b64)
-            decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_bytes)
+            decrypted_bytes = aes_decrypt_gcm(aes_key, encrypted_bytes)
             return decrypted_bytes.decode('utf-8')
         except Exception as e:
             print(f"Error dekripsi data: {e}")
-            return "Data Error/Belum Diisi" # Tampilkan pesan error jika dekripsi gagal
+            return "Data Error/Belum Diisi"
 
-    decrypted_fullname = decrypt_profile_data(user_data.get("fullname"))
-    decrypted_email = decrypt_profile_data(user_data.get("email"))
-    decrypted_phone = decrypt_profile_data(user_data.get("phone"))
-    # === END: Logika Dekripsi ===
+    decrypted_fullname = decrypt_profile_data_safe(user_data.get("fullname"))
+    decrypted_email = decrypt_profile_data_safe(user_data.get("email"))
+    decrypted_phone = decrypt_profile_data_safe(user_data.get("phone"))
     
-    # Gunakan Nama Lengkap yang didekripsi sebagai display_name
     display_name = decrypted_fullname if decrypted_fullname != "Belum Diisi" else username
 
     return render_template(
         "profile_dashboard.html", 
         display_name=display_name,
-        # Ganti data yang dikirim ke template menjadi data yang sudah didekripsi
         fullname=decrypted_fullname,
         email=decrypted_email,
         phone=decrypted_phone
-        # BARIS ASLI:
-        # fullname=user_data.get("fullname", "Belum Diisi"),
-        # email=user_data.get("email", "Belum Diisi"),
-        # phone=user_data.get("phone", "Belum Diisi")
     )
 
-# ... (Setelah ini baru dilanjutkan dengan @app.route("/edit_profile") dan rute lainnya)
-# Modifikasi fungsi edit_profile()
 @app.route("/edit_profile", methods=["GET", "POST"])
 @login_required
 def edit_profile():
@@ -337,22 +488,17 @@ def edit_profile():
             phone = request.form.get("phone")
             
             if username in user_db:
-                # 1. ENKRIPSI DATA SEBELUM DISIMPAN
-                
-                # Enkripsi Fullname
+                # ENKRIPSI DATA SEBELUM DISIMPAN (MENGGUNAKAN AES-256 GCM)
                 fn_bytes = fullname.encode('utf-8')
-                encrypted_fn = aes_encrypt_bytes(aes_key, fn_bytes)
-                # Simpan sebagai Base64 String agar aman di JSON
+                encrypted_fn = aes_encrypt_gcm(aes_key, fn_bytes)
                 user_db[username]["fullname"] = base64.b64encode(encrypted_fn).decode('utf-8')
                 
-                # Enkripsi Email
                 em_bytes = email.encode('utf-8')
-                encrypted_em = aes_encrypt_bytes(aes_key, em_bytes)
+                encrypted_em = aes_encrypt_gcm(aes_key, em_bytes)
                 user_db[username]["email"] = base64.b64encode(encrypted_em).decode('utf-8')
                 
-                # Enkripsi Phone
                 ph_bytes = phone.encode('utf-8')
-                encrypted_ph = aes_encrypt_bytes(aes_key, ph_bytes)
+                encrypted_ph = aes_encrypt_gcm(aes_key, ph_bytes)
                 user_db[username]["phone"] = base64.b64encode(encrypted_ph).decode('utf-8')
                 
                 save_data(user_db, get_user_db_path())
@@ -365,43 +511,23 @@ def edit_profile():
             flash(f"Terjadi error saat menyimpan profil: {e}", "error")
             return redirect(url_for("edit_profile"))
 
-    # 2. DEKRIPSI DATA SAAT DIMUAT UNTUK FORM (GET)
-    
-    decrypted_fullname = ""
-    decrypted_email = ""
-    decrypted_phone = ""
+    # DEKRIPSI DATA SAAT DIMUAT UNTUK FORM (GET)
+    decrypted_fullname = decrypted_email = decrypted_phone = ""
     
     try:
-        if user_data.get("fullname"):
-            encrypted_fn_b64 = user_data["fullname"]
-            encrypted_fn_bytes = base64.b64decode(encrypted_fn_b64)
-            decrypted_fn_bytes = aes_decrypt_bytes(aes_key, encrypted_fn_bytes)
-            decrypted_fullname = decrypted_fn_bytes.decode('utf-8')
+        def decrypt_form_data(encrypted_b64):
+            if encrypted_b64:
+                encrypted_bytes = base64.b64decode(encrypted_b64)
+                return aes_decrypt_gcm(aes_key, encrypted_bytes).decode('utf-8')
+            return ""
             
-        if user_data.get("email"):
-            encrypted_em_b64 = user_data["email"]
-            encrypted_em_bytes = base64.b64decode(encrypted_em_b64)
-            decrypted_em_bytes = aes_decrypt_bytes(aes_key, encrypted_em_bytes)
-            decrypted_email = decrypted_em_bytes.decode('utf-8')
-
-        if user_data.get("phone"):
-            encrypted_ph_b64 = user_data["phone"]
-            encrypted_ph_bytes = base64.b64decode(encrypted_ph_b64)
-            decrypted_ph_bytes = aes_decrypt_bytes(aes_key, encrypted_ph_bytes)
-            decrypted_phone = decrypted_ph_bytes.decode('utf-8')
+        decrypted_fullname = decrypt_form_data(user_data.get("fullname"))
+        decrypted_email = decrypt_form_data(user_data.get("email"))
+        decrypted_phone = decrypt_form_data(user_data.get("phone"))
             
     except Exception as e:
-        # Menangkap error dekripsi (mungkin data lama belum terenkripsi)
         print(f"Error saat dekripsi profil: {e}. Menggunakan data mentah/kosong.")
-        # Jika gagal dekripsi, gunakan nilai kosong atau nilai mentah yang ada
-        decrypted_fullname = user_data.get("fullname", "") if user_data.get("fullname") and len(user_data["fullname"]) < 50 else ""
-        decrypted_email = user_data.get("email", "") if user_data.get("email") and len(user_data["email"]) < 50 else ""
-        decrypted_phone = user_data.get("phone", "") if user_data.get("phone") and len(user_data["phone"]) < 50 else ""
-        
-        # Flash warning jika data lama tidak terenkripsi
-        if decrypted_fullname != "" or decrypted_email != "" or decrypted_phone != "":
-            flash("Data profil Anda perlu diperbarui untuk proses enkripsi. Harap Simpan Profil.", "warning")
-            
+        flash("Data profil Anda perlu diperbarui untuk proses enkripsi yang baru. Harap Simpan Profil.", "warning")
             
     return render_template(
         "edit_profile.html", 
@@ -413,43 +539,41 @@ def edit_profile():
 @app.route("/encrypt_text", methods=["GET", "POST"])
 @login_required
 def encrypt_text():
-    """Halaman untuk enkripsi teks (logika penuh)."""
-    encrypted_text_hex = None
+    """Halaman untuk enkripsi teks (Vigenere + AES-256 GCM)."""
+    encrypted_text_b64 = None
     if request.method == "POST":
         try:
-            # Mengambil input dari form dengan name="text_input"
             text_to_encrypt = request.form["text_input"] 
-            text_bytes = text_to_encrypt.encode('utf-8')
             
-            # Enkripsi menggunakan AES key global
-            encrypted_data = aes_encrypt_bytes(aes_key, text_bytes)
-            # Mengubah hasil enkripsi ke format heksadesimal untuk ditampilkan
-            encrypted_text_hex = encrypted_data.hex()
+            # 1. Enkripsi Vigenere
+            vigenere_ciphertext = vigenere_encrypt(text_to_encrypt, VIGENERE_KEY)
             
-            flash("Teks berhasil dienkripsi!", "success")
-            # Simpan ke history
-            add_history(session["username"], "Encrypt Text", text_to_encrypt[:30]+"...")
+            # 2. Enkripsi AES-256 GCM
+            text_bytes = vigenere_ciphertext.encode('utf-8')
+            encrypted_data = aes_encrypt_gcm(aes_key, text_bytes)
+            
+            encrypted_text_b64 = base64.b64encode(encrypted_data).decode('utf-8')
+            
+            flash("Teks berhasil dienkripsi dengan Vigenere + AES-256 GCM!", "success")
+            add_history(session["username"], "Encrypt Text (Vigenere+AES)", text_to_encrypt[:30]+"...")
 
         except Exception as e:
             flash(f"Terjadi error saat enkripsi: {e}", "error")
             
-    return render_template("encrypt_text.html", encrypted_result=encrypted_text_hex)
+    return render_template("encrypt_text.html", encrypted_result=encrypted_text_b64)
 
-
-# app.py (Ganti fungsi encrypt_image yang sudah ada)
 
 @app.route("/encrypt_image", methods=["GET", "POST"])
 @login_required
 def encrypt_image():
-    """Halaman untuk steganografi gambar (enkripsi/dekripsi)."""
+    """Halaman untuk steganografi gambar (AES-256 GCM + LSB)."""
     encrypt_download_filename = None
-    decrypted_message = None # Variabel baru untuk pesan dekripsi
+    decrypted_message = None 
     
     if request.method == "POST":
-        # Ambil nilai dari input tersembunyi 'action'
         action = request.form.get("action") 
         
-        # --- LOGIKA ENKRIPSI (Steganography Encrypt) ---
+        # --- LOGIKA ENKRIPSI (AES-256 GCM + LSB Hiding) ---
         if action == "encrypt":
             try:
                 if "image" not in request.files or "message" not in request.form:
@@ -463,32 +587,33 @@ def encrypt_image():
                     flash("File atau pesan tidak boleh kosong.", "error")
                     return redirect(request.url)
                     
-                # 1. Simpan file upload
                 filename = secure_filename(file.filename)
                 input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
                 file.save(input_path)
                 
-                # 2. Proses Steganografi (Perbaikan Nama File)
-                name_only = os.path.splitext(filename)[0] # Ambil nama file tanpa ekstensi
-                output_filename = f"stego_{name_only}.png" # Hanya tambahkan satu .png
+                # 1. Enkripsi Pesan (AES-256 GCM)
+                message_bytes = message.encode('utf-8')
+                encrypted_message = aes_encrypt_gcm(aes_key, message_bytes)
+                
+                # 2. Proses Steganografi (LSB)
+                name_only = os.path.splitext(filename)[0]
+                output_filename = f"stego_lsb_{name_only}.png"
                 output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
                 
-                if not steganography_encrypt(input_path, message, output_path):
-                    raise Exception("Gagal melakukan steganografi.")
+                if not lsb_hide(input_path, encrypted_message, output_path):
+                    raise Exception("Gagal melakukan steganografi LSB. Mungkin pesan terlalu besar.")
                     
-                flash("Pesan berhasil disembunyikan ke dalam gambar!", "success")
+                flash("Pesan berhasil dienkripsi dan disembunyikan menggunakan AES-256 GCM + LSB!", "success")
                 encrypt_download_filename = output_filename
                 
-                # 3. Simpan ke history
-                add_history(session["username"], "Steganography Encrypt", filename, output_filename)
+                add_history(session["username"], "LSB Stego Encrypt", filename, output_filename)
                 
             except Exception as e:
                 flash(f"Terjadi error: {e}", "error")
 
-        # --- LOGIKA DEKRIPSI (Steganography Decrypt) ---
+        # --- LOGIKA DEKRIPSI (LSB Retrieval + AES-256 GCM Decrypt) ---
         elif action == "decrypt":
             try:
-                # Menggunakan name input file yang berbeda: decrypt_image
                 file = request.files.get("decrypt_image") 
                 
                 if not file or file.filename == "":
@@ -499,19 +624,22 @@ def encrypt_image():
                 input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
                 file.save(input_path)
                 
-                # 1. Proses Dekripsi
-                message = steganography_decrypt(input_path) # steganography_decrypt sudah tersedia di app.py
+                # 1. Proses Pengambilan Pesan (LSB Retrieve)
+                encrypted_message = lsb_retrieve(input_path)
 
-                if message:
-                    decrypted_message = message
-                    flash("Pesan rahasia berhasil ditemukan di dalam gambar!", "success")
-                    add_history(session["username"], "Steganography Decrypt", filename)
+                if encrypted_message:
+                    # 2. Dekripsi Pesan (AES-256 GCM)
+                    decrypted_bytes = aes_decrypt_gcm(aes_key, encrypted_message)
+                    decrypted_message = decrypted_bytes.decode('utf-8')
+                    
+                    flash("Pesan rahasia berhasil ditemukan dan didekripsi!", "success")
+                    add_history(session["username"], "LSB Stego Decrypt", filename)
                 else:
-                    flash("Tidak ditemukan pesan rahasia di dalam gambar tersebut. Pastikan itu adalah file PNG steganografi.", "warning")
+                    flash("Tidak ditemukan pesan rahasia di dalam gambar tersebut. Pastikan itu adalah file PNG/JPG steganografi LSB.", "warning")
 
             except Exception as e:
                 print(f"Error saat dekripsi: {e}")
-                flash(f"Terjadi error saat dekripsi. Pastikan file adalah file gambar PNG yang valid: {e}", "error")
+                flash(f"Terjadi error saat dekripsi/verifikasi. Pastikan file adalah file gambar steganografi LSB yang valid: {e}", "error")
 
             
     return render_template(
@@ -520,67 +648,80 @@ def encrypt_image():
         decrypted_message=decrypted_message
     )
 
-# app.py (Ganti fungsi encrypt_file yang sudah ada)
-
+# File Encryption/Decryption (RSA Hybrid)
 @app.route("/encrypt_file", methods=["GET", "POST"])
 @login_required
 def encrypt_file():
-    """Halaman untuk enkripsi dan dekripsi file (Gabungan)."""
+    """Halaman untuk enkripsi dan dekripsi file (RSA Hybrid)."""
     
     encrypt_download_filename = None
     decrypt_download_filename = None
     
     if request.method == "POST":
-        # Ambil nilai dari input tersembunyi 'action'
         action = request.form.get("action") 
         
-        # --- LOGIKA ENKRIPSI ---
+        # --- LOGIKA ENKRIPSI (RSA Hybrid) ---
         if action == "encrypt":
             try:
-                # Menggunakan request.files.get() untuk menghindari KeyError
                 file = request.files.get("encrypt_file") 
                 
-                # Pengecekan file yang lebih robust: file tidak ada ATAU nama file kosong
                 if not file or file.filename == "":
-                    flash("Harap pilih file untuk enkripsi sebelum menekan tombol.", "error")
+                    flash("Harap pilih file untuk enkripsi.", "error")
                     return redirect(url_for("encrypt_file"))
 
                 file_bytes = file.read()
-                # ALGORITMA ENKRIPSI
-                encrypted_data = aes_encrypt_bytes(aes_key, file_bytes)
                 
-                output_filename = f"encrypted_{secure_filename(file.filename)}.bin"
+                # 1. Generate Symmetric Key (AES-256) untuk enkripsi data
+                session_key = get_random_bytes(32)
+                
+                # 2. Enkripsi File dengan Symmetric Key (AES-256 GCM)
+                file_ciphertext = aes_encrypt_gcm(session_key, file_bytes)
+                
+                # 3. Enkripsi Symmetric Key dengan Kunci Publik RSA
+                rsa_cipher = PKCS1_OAEP.new(public_rsa_key)
+                encrypted_session_key = rsa_cipher.encrypt(session_key)
+                
+                # 4. Gabungkan (Panjang Kunci + Kunci Terenkripsi + File Terenkripsi)
+                encrypted_data = len(encrypted_session_key).to_bytes(4, byteorder='big') + encrypted_session_key + file_ciphertext
+                
+                output_filename = f"hybrid_rsa_aes_{secure_filename(file.filename)}.bin"
                 output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
                 
                 with open(output_path, "wb") as f:
                     f.write(encrypted_data)
 
-                flash("File berhasil dienkripsi!", "success")
+                flash("File berhasil dienkripsi secara Hybrid (RSA-AES)!", "success")
                 encrypt_download_filename = output_filename
-                add_history(session["username"], "Encrypt File", file.filename, output_filename)
+                add_history(session["username"], "Encrypt File (RSA Hybrid)", file.filename, output_filename)
 
             except Exception as e:
                 flash(f"Terjadi error saat enkripsi: {e}", "error")
         
-        # --- LOGIKA DEKRIPSI (Algoritma Dekripsi File) ---
+        # --- LOGIKA DEKRIPSI (RSA Hybrid) ---
         elif action == "decrypt":
             try:
-                # Menggunakan request.files.get() untuk menghindari KeyError
                 file = request.files.get("decrypt_file") 
                 
-                # Pengecekan file yang lebih robust: file tidak ada ATAU nama file kosong
                 if not file or file.filename == "":
                     flash("Harap pilih file terenkripsi sebelum menekan tombol.", "error")
                     return redirect(url_for("encrypt_file"))
 
                 encrypted_file_bytes = file.read()
                 
-                # ALGORITMA DEKRIPSI
-                # aes_decrypt_bytes adalah fungsi yang sudah ada (menggunakan AES key global, IV, dan unpad)
-                decrypted_data = aes_decrypt_bytes(aes_key, encrypted_file_bytes)
+                # 1. Pisahkan Komponen
+                key_len = int.from_bytes(encrypted_file_bytes[:4], byteorder='big')
+                encrypted_session_key = encrypted_file_bytes[4:4 + key_len]
+                file_ciphertext = encrypted_file_bytes[4 + key_len:]
+                
+                # 2. Dekripsi Symmetric Key dengan Kunci Privat RSA
+                rsa_cipher = PKCS1_OAEP.new(private_rsa_key)
+                session_key = rsa_cipher.decrypt(encrypted_session_key)
+                
+                # 3. Dekripsi File dengan Symmetric Key (AES-256 GCM)
+                decrypted_data = aes_decrypt_gcm(session_key, file_ciphertext)
                 
                 # Menentukan nama file output
-                original_filename = secure_filename(file.filename).replace("encrypted_", "").replace(".bin", "")
+                original_filename = secure_filename(file.filename).replace("hybrid_rsa_aes_", "").replace(".bin", "")
                 output_filename = f"decrypted_{original_filename}"
                 output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
                 
@@ -589,12 +730,11 @@ def encrypt_file():
 
                 flash("File berhasil didekripsi!", "success")
                 decrypt_download_filename = output_filename
-                add_history(session["username"], "Decrypt File", file.filename, output_filename)
+                add_history(session["username"], "Decrypt File (RSA Hybrid)", file.filename, output_filename)
 
             except Exception as e:
-                # Error ini sering muncul jika file bukan file AES yang valid (misalnya Padding Error)
                 print(f"Error dekripsi file: {e}")
-                flash(f"Terjadi error saat dekripsi. Pastikan file adalah file enkripsi AES yang valid: {e}", "error")
+                flash(f"Terjadi error saat dekripsi. Pastikan file adalah file enkripsi Hybrid RSA-AES yang valid: {e}", "error")
 
 
     return render_template(
@@ -602,13 +742,13 @@ def encrypt_file():
         encrypt_download_file=encrypt_download_filename,
         decrypt_download_file=decrypt_download_filename
     )
+    
 @app.route("/history")
 @login_required
 def history():
     """Halaman untuk melihat riwayat enkripsi."""
     history_db = load_data(get_history_db_path())
     user_history = history_db.get(session["username"], [])
-    # Membalik list agar yang terbaru di atas
     user_history.reverse() 
     
     return render_template("history.html", history_list=user_history)
