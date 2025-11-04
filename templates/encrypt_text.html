@@ -1,12 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Enkripsi Teks{% endblock %}
+{% block title %}Kriptografi Teks{% endblock %}
 {% block content %}
 <div class="container">
-    <h2>🔏 Enkripsi Teks</h2>
-    <form>
-        <label>Masukkan Teks:</label>
-        <textarea rows="5" placeholder="Ketik teks di sini..."></textarea>
-        <button>Enkripsi</button>
+    <h2>🔏 Enkripsi/Dekripsi Teks</h2>
+    <form method="POST" action="{{ url_for('encrypt_text') }}">
+        <label>Masukkan Teks (Plaintext untuk Enkripsi, Hex untuk Dekripsi):</label>
+        {# Menggunakan input_text untuk mempertahankan nilai setelah POST #}
+        <textarea name="text_input" rows="5" placeholder="Ketik teks atau kode hex di sini..." required>{{ input_text }}</textarea>
+        
+        {# Dua tombol aksi untuk membedakan proses di Flask #}
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" name="action" value="encrypt" style="flex: 1; background-color: #38bdf8;">Enkripsi</button>
+            <button type="submit" name="action" value="decrypt" style="flex: 1; background-color: #ef4444;">Dekripsi</button>
+        </div>
+        
+        {# Bagian untuk menampilkan hasil #}
+        {% if result_text %}
+        <label style="margin-top: 25px;">Hasil:</label>
+        <textarea rows="5" readonly>{{ result_text }}</textarea>
+        {% endif %}
     </form>
 </div>
 {% endblock %}

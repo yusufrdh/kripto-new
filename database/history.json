@@ -1,0 +1,34 @@
+{
+    "admin": [
+        {
+            "action": "Encrypt Text",
+            "original_file": "asdasd...",
+            "generated_file": null,
+            "timestamp": "xz8n+WNh"
+        },
+        {
+            "action": "Encrypt Text",
+            "original_file": "asdasd...",
+            "generated_file": null,
+            "timestamp": "ougrp15A"
+        },
+        {
+            "action": "Decrypt Text",
+            "original_file": "510a53c4d56cdc415baf906c7b5264...",
+            "generated_file": null,
+            "timestamp": "SXzGyBjB"
+        },
+        {
+            "action": "Encrypt Text",
+            "original_file": "ucup cuki...",
+            "generated_file": null,
+            "timestamp": "F05BPntv"
+        },
+        {
+            "action": "Decrypt Text",
+            "original_file": "ce3e4d40cf649ed479d7acc56aad8a...",
+            "generated_file": null,
+            "timestamp": "WHAXE/v/"
+        }
+    ]
+}

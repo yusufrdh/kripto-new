@@ -212,7 +212,7 @@ def index():
     
     # Biarkan seperti ini untuk menampilkan "Selamat Datang" tanpa nama jika tidak login
     return render_template("index.html", display_name=display_name)
-    
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Halaman login user (dari kodingan baru)."""
@@ -410,28 +410,50 @@ def edit_profile():
         phone=decrypted_phone
     )
 
+# app.py
 @app.route("/encrypt_text", methods=["GET", "POST"])
 @login_required
 def encrypt_text():
-    """Halaman untuk enkripsi teks (logika penuh)."""
-    encrypted_text_hex = None
+    """Halaman untuk enkripsi dan dekripsi teks."""
+    result_text = None
+    action_type = None
+    input_text = ""
+
     if request.method == "POST":
         try:
-            text_to_encrypt = request.form["text_input"]
-            text_bytes = text_to_encrypt.encode('utf-8')
-            
-            # Enkripsi menggunakan AES key global
-            encrypted_data = aes_encrypt_bytes(aes_key, text_bytes)
-            encrypted_text_hex = encrypted_data.hex()
-            
-            flash("Teks berhasil dienkripsi!", "success")
-            # Simpan ke history
-            add_history(session["username"], "Encrypt Text", text_to_encrypt[:30]+"...")
+            # Mengambil input teks dan aksi (encrypt/decrypt) dari form
+            input_text = request.form["text_input"]
+            action = request.form.get("action") 
+
+            if action == "encrypt":
+                # --- LOGIKA ENKRIPSI ---
+                text_bytes = input_text.encode('utf-8')
+                encrypted_data = aes_encrypt_bytes(aes_key, text_bytes)
+                result_text = encrypted_data.hex() # Hasil dalam bentuk Hex String
+                action_type = "Enkripsi"
+                
+                flash("Teks berhasil dienkripsi!", "success")
+                add_history(session["username"], "Encrypt Text", input_text[:30]+"...")
+                
+            elif action == "decrypt":
+                # --- LOGIKA DEKRIPSI ---
+                # Input adalah string hex, konversi ke bytes
+                encrypted_data = bytes.fromhex(input_text)
+                decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_data)
+                result_text = decrypted_bytes.decode('utf-8') # Hasil dekripsi (Plaintext)
+                action_type = "Dekripsi"
+                
+                flash("Teks berhasil didekripsi!", "success")
+                add_history(session["username"], "Decrypt Text", input_text[:30]+"...")
+            else:
+                raise ValueError("Aksi tidak valid.")
 
         except Exception as e:
-            flash(f"Terjadi error saat enkripsi: {e}", "error")
+            flash(f"Terjadi error saat {action_type.lower() if action_type else 'pemrosesan'}: Pastikan input sudah benar (teks biasa untuk enkripsi, heksadesimal untuk dekripsi). Error: {e}", "error")
+            result_text = None
             
-    return render_template("encrypt_text.html", encrypted_result=encrypted_text_hex)
+    # Mengirimkan input_text (untuk mempertahankan nilai di textarea) dan result_text ke template
+    return render_template("encrypt_text.html", result_text=result_text, input_text=input_text)
 
 @app.route("/encrypt_image", methods=["GET", "POST"])
 @login_required
