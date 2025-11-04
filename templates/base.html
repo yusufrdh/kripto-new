@@ -9,12 +9,13 @@
 </head>
 <body>
 
-    {% if session.get('user') %}
+    {% if session.get('username') %}
     <header class="site-header">
         <nav class="navbar container">
             <div class="nav-brand">🔒 Proyek kriptografi</div>
             <div class="nav-links">
                 <a href="{{ url_for('index') }}">Beranda</a>
+                <a href="{{ url_for('profile_dashboard') }}">Profil</a>
                 <a href="{{ url_for('encrypt_text') }}">Encrypt Text</a>
                 <a href="{{ url_for('encrypt_file') }}">Encrypt File</a>
                 <a href="{{ url_for('encrypt_image') }}">Encrypt Image</a>

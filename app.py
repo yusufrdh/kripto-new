@@ -167,14 +167,36 @@ def login_required(f):
 # RUTE UTAMA (Index, Login, Register, Logout)
 # =====================================================================
 
+# app.py
+
+# app.py
+
 @app.route("/")
 def index():
     """Halaman utama / landing page."""
-    # Jika Anda ingin halaman utama langsung ke profil jika sudah login:
+    
+    display_name = "Pengguna" # Default
+    
     if "logged_in" in session:
-        return redirect(url_for("profile"))
-    return render_template("index.html")
-
+        username = session["username"]
+        user_db = load_data(get_user_db_path())
+        
+        # Cari Fullname, jika tidak ada, gunakan Username
+        if username in user_db and user_db[username].get("fullname"):
+            display_name = user_db[username]["fullname"]
+        else:
+            display_name = username
+            
+        # HAPUS: if "logged_in" in session: return redirect(url_for("profile"))
+        
+        return render_template("index.html", display_name=display_name)
+    
+    # Jika tidak login, render index.html yang akan terlihat kosong
+    # Anda juga bisa melakukan redirect ke login di sini jika diinginkan:
+    # return redirect(url_for("login"))
+    
+    # Biarkan seperti ini untuk menampilkan "Selamat Datang" tanpa nama jika tidak login
+    return render_template("index.html", display_name=display_name)
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Halaman login user (dari kodingan baru)."""
@@ -188,7 +210,8 @@ def login():
             session["logged_in"] = True
             session["username"] = username
             flash("Login berhasil! Selamat datang.", "success")
-            return redirect(url_for("profile")) # Arahkan ke profile
+            # UBAH: Arahkan ke index (beranda)
+            return redirect(url_for("index")) 
         else:
             flash("Login gagal! Username atau password salah.", "error")
             
@@ -218,23 +241,137 @@ def register():
         
     return render_template("register.html")
 
+# app.py
+
 @app.route("/logout")
 @login_required
 def logout():
     """Proses logout user."""
     session.clear()
     flash("Anda telah berhasil logout.", "success")
-    return redirect(url_for("index"))
+    # UBAH: Arahkan langsung ke halaman login setelah logout
+    return redirect(url_for("login"))
 
 # =====================================================================
 # RUTE FITUR APLIKASI (Sesuai Gambar Anda)
 # =====================================================================
 
-@app.route("/profile")
+# app.py
+
+# app.py
+
+# ... (Pastikan semua fungsi helper dan AES key sudah dimuat)
+
+# [Rute Profil/Dashboard] - Tampilan Statis Data
+@app.route("/profile") 
 @login_required
-def profile():
-    """Halaman profile pengguna (dashboard)."""
-    return render_template("profile.html", username=session["username"])
+def profile_dashboard():
+    """Halaman dashboard profil (menampilkan data statis)."""
+    
+    username = session["username"]
+    user_db = load_data(get_user_db_path())
+    user_data = user_db.get(username, {})
+    
+    display_name = user_data.get("fullname") or username
+
+    return render_template(
+        "profile_dashboard.html", 
+        display_name=display_name,
+        fullname=user_data.get("fullname", "Belum Diisi"),
+        email=user_data.get("email", "Belum Diisi"),
+        phone=user_data.get("phone", "Belum Diisi")
+    )
+
+# ... (Setelah ini baru dilanjutkan dengan @app.route("/edit_profile") dan rute lainnya)
+# Modifikasi fungsi edit_profile()
+@app.route("/edit_profile", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    """Halaman untuk mengedit data profil."""
+    
+    username = session["username"]
+    user_db = load_data(get_user_db_path())
+    user_data = user_db.get(username, {})
+    
+    if request.method == "POST":
+        try:
+            fullname = request.form.get("fullname")
+            email = request.form.get("email")
+            phone = request.form.get("phone")
+            
+            if username in user_db:
+                # 1. ENKRIPSI DATA SEBELUM DISIMPAN
+                
+                # Enkripsi Fullname
+                fn_bytes = fullname.encode('utf-8')
+                encrypted_fn = aes_encrypt_bytes(aes_key, fn_bytes)
+                # Simpan sebagai Base64 String agar aman di JSON
+                user_db[username]["fullname"] = base64.b64encode(encrypted_fn).decode('utf-8')
+                
+                # Enkripsi Email
+                em_bytes = email.encode('utf-8')
+                encrypted_em = aes_encrypt_bytes(aes_key, em_bytes)
+                user_db[username]["email"] = base64.b64encode(encrypted_em).decode('utf-8')
+                
+                # Enkripsi Phone
+                ph_bytes = phone.encode('utf-8')
+                encrypted_ph = aes_encrypt_bytes(aes_key, ph_bytes)
+                user_db[username]["phone"] = base64.b64encode(encrypted_ph).decode('utf-8')
+                
+                save_data(user_db, get_user_db_path())
+                flash("Profil berhasil diperbarui dan dienkripsi!", "success")
+            else:
+                flash("Gagal memperbarui profil: Pengguna tidak ditemukan.", "error")
+                
+            return redirect(url_for("profile_dashboard")) 
+        except Exception as e:
+            flash(f"Terjadi error saat menyimpan profil: {e}", "error")
+            return redirect(url_for("edit_profile"))
+
+    # 2. DEKRIPSI DATA SAAT DIMUAT UNTUK FORM (GET)
+    
+    decrypted_fullname = ""
+    decrypted_email = ""
+    decrypted_phone = ""
+    
+    try:
+        if user_data.get("fullname"):
+            encrypted_fn_b64 = user_data["fullname"]
+            encrypted_fn_bytes = base64.b64decode(encrypted_fn_b64)
+            decrypted_fn_bytes = aes_decrypt_bytes(aes_key, encrypted_fn_bytes)
+            decrypted_fullname = decrypted_fn_bytes.decode('utf-8')
+            
+        if user_data.get("email"):
+            encrypted_em_b64 = user_data["email"]
+            encrypted_em_bytes = base64.b64decode(encrypted_em_b64)
+            decrypted_em_bytes = aes_decrypt_bytes(aes_key, encrypted_em_bytes)
+            decrypted_email = decrypted_em_bytes.decode('utf-8')
+
+        if user_data.get("phone"):
+            encrypted_ph_b64 = user_data["phone"]
+            encrypted_ph_bytes = base64.b64decode(encrypted_ph_b64)
+            decrypted_ph_bytes = aes_decrypt_bytes(aes_key, encrypted_ph_bytes)
+            decrypted_phone = decrypted_ph_bytes.decode('utf-8')
+            
+    except Exception as e:
+        # Menangkap error dekripsi (mungkin data lama belum terenkripsi)
+        print(f"Error saat dekripsi profil: {e}. Menggunakan data mentah/kosong.")
+        # Jika gagal dekripsi, gunakan nilai kosong atau nilai mentah yang ada
+        decrypted_fullname = user_data.get("fullname", "") if user_data.get("fullname") and len(user_data["fullname"]) < 50 else ""
+        decrypted_email = user_data.get("email", "") if user_data.get("email") and len(user_data["email"]) < 50 else ""
+        decrypted_phone = user_data.get("phone", "") if user_data.get("phone") and len(user_data["phone"]) < 50 else ""
+        
+        # Flash warning jika data lama tidak terenkripsi
+        if decrypted_fullname != "" or decrypted_email != "" or decrypted_phone != "":
+            flash("Data profil Anda perlu diperbarui untuk proses enkripsi. Harap Simpan Profil.", "warning")
+            
+            
+    return render_template(
+        "edit_profile.html", 
+        fullname=decrypted_fullname,
+        email=decrypted_email,
+        phone=decrypted_phone
+    )
 
 @app.route("/encrypt_text", methods=["GET", "POST"])
 @login_required

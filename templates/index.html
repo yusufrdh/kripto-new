@@ -3,8 +3,13 @@
 {% block content %}
 
 <div class="container">
-    <h2>Selamat Datang, {{ session.get('user') }}!</h2>
-    <p>Gunakan menu di atas untuk melakukan proses enkripsi atau steganografi.</p>
+    {% if session.get('username') %}
+        <h2>Selamat Datang, {{ display_name }}!</h2>
+        <p>Gunakan menu di atas untuk melakukan proses enkripsi atau steganografi.</p>
+    {% else %}
+        <h2>Selamat Datang!</h2>
+        <p>Silakan <a href="{{ url_for('login') }}">Login</a> untuk mengakses fitur enkripsi dan steganografi.</p>
+    {% endif %}
 </div>
 
 {% endblock %}

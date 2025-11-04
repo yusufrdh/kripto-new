@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Edit Profil{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>⚙️ Edit Profil</h2>
+    <p>Perbarui informasi akun Anda di bawah ini.</p>
+    
+    <form id="profileForm" method="POST" action="{{ url_for('edit_profile') }}"> 
+      
+      <label>Nama Lengkap</label>
+      <input type="text" name="fullname" id="fullname" placeholder="Nama Anda" value="{{ fullname }}" required> 
+
+      <label>Email</label>
+      <input type="email" name="email" id="email" placeholder="Email aktif" value="{{ email }}" required> 
+
+      <label>Nomor HP</label>
+      <input type="text" name="phone" id="phone" placeholder="Nomor HP" value="{{ phone }}"> 
+
+      <button type="submit">Simpan Profil</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Profil{% endblock %}
+{% block content %}
+
+<div class="container">
+    <h2>👤 Profil Saya</h2>
+    <p>Halo, {{ display_name }}. Ini adalah data profil Anda saat ini.</p>
+    
+    <div class="profile-details" style="margin-top: 25px;">
+        <p><strong>Nama Lengkap:</strong> {{ fullname }}</p>
+        <p><strong>Email:</strong> {{ email }}</p>
+        <p><strong>Nomor HP:</strong> {{ phone }}</p>
+    </div>
+    
+    <hr style="border: 0; height: 1px; background: #334155; margin: 20px 0;">
+
+    <a href="{{ url_for('edit_profile') }}" style="text-decoration: none;">
+        <button style="width: 100%;">⚙️ Edit Profil</button>
+    </a>
+</div>
+
+{% endblock %}
