@@ -17,6 +17,17 @@
     <a href="{{ url_for('edit_profile') }}" style="text-decoration: none;">
         <button style="width: 100%;">⚙️ Edit Profil</button>
     </a>
+    
+    {# MODIFIKASI BARU: Tampilkan tombol History hanya untuk Admin #}
+    {% if is_admin_user %}
+    <div style="margin-top: 10px;">
+        <a href="{{ url_for('history') }}" style="text-decoration: none;">
+            <button style="width: 100%; background-color: #f7a500;">
+                <span style="color: #1e293b;">📜 Lihat Semua Riwayat (Admin)</span>
+            </button>
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}

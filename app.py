@@ -478,12 +478,15 @@ def profile_dashboard():
     
     display_name = decrypted_fullname if decrypted_fullname != "Belum Diisi" else username
 
+    is_admin_user = is_admin()
+    
     return render_template(
         "profile_dashboard.html", 
         display_name=display_name,
         fullname=decrypted_fullname,
         email=decrypted_email,
-        phone=decrypted_phone
+        phone=decrypted_phone,
+        is_admin_user=is_admin_user
     )
 
 @app.route("/edit_profile", methods=["GET", "POST"])
