@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Beranda{% endblock %}
+{% block content %}
+
+<div class="container">
+    <h2>Selamat Datang, {{ session.get('user') }}!</h2>
+    <p>Gunakan menu di atas untuk melakukan proses enkripsi atau steganografi.</p>
+</div>
+
+{% endblock %}

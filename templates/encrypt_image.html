@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Enkripsi Gambar{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>🖼️ Enkripsi Gambar</h2>
+    <form enctype="multipart/form-data">
+        <label>Pilih Gambar:</label>
+        <input type="file" accept="image/*" required>
+        <button>Proses Enkripsi</button>
+    </form>
+</div>
+{% endblock %}

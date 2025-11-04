@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aplikasi Kripto & Stegano{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    {% if session.get('user') %}
+    <header class="site-header">
+        <nav class="navbar container">
+            <div class="nav-brand">🔒 Proyek kriptografi</div>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}">Beranda</a>
+                <a href="{{ url_for('encrypt_text') }}">Encrypt Text</a>
+                <a href="{{ url_for('encrypt_file') }}">Encrypt File</a>
+                <a href="{{ url_for('encrypt_image') }}">Encrypt Image</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </nav>
+    </header>
+    {% endif %}
+
+    <main class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2025 Proyek Kripto & Stegano.</p>
+            <p>Dibuat untuk menyelesaikan tugas akhir mata kuliah kriptografi.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

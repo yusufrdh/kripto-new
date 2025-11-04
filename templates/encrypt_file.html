@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Enkripsi File{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>📂 Enkripsi File</h2>
+    <form enctype="multipart/form-data">
+        <label>Pilih File:</label>
+        <input type="file" required>
+        <button>Upload & Enkripsi</button>
+    </form>
+</div>
+{% endblock %}

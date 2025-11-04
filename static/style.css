@@ -1,0 +1,114 @@
+/* === GLOBAL STYLE === */
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+/* === NAVBAR === */
+.navbar {
+    background-color: #1e293b;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 40px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.nav-brand {
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.nav-links a {
+    color: #cbd5e1;
+    margin-left: 15px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: #38bdf8;
+}
+
+/* === CONTAINER === */
+.container {
+    max-width: 800px;
+    margin: 60px auto;
+    background: rgba(15, 23, 42, 0.95);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+/* === FORM === */
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+input, textarea {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f1f5f9;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 5px;
+}
+
+button {
+    margin-top: 20px;
+    background-color: #38bdf8;
+    color: #0f172a;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+button:hover {
+    background-color: #0ea5e9;
+    box-shadow: 0 0 15px #38bdf8;
+    cursor: pointer;
+}
+
+/* === LOGIN PAGE === */
+.login-container {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('images/cyber_bg.jpg') no-repeat center center/cover;
+}
+
+.login-box {
+    background: rgba(15, 23, 42, 0.9);
+    padding: 40px;
+    border-radius: 15px;
+    width: 350px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+.login-box h2 {
+    color: #38bdf8;
+    margin-bottom: 20px;
+}
+
+.login-box input {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.login-box button {
+    width: 100%;
+}
