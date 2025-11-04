@@ -1,12 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Enkripsi File{% endblock %}
+{% block title %}Enkripsi & Dekripsi File{% endblock %}
 {% block content %}
+
 <div class="container">
     <h2>📂 Enkripsi File</h2>
-    <form enctype="multipart/form-data">
-        <label>Pilih File:</label>
-        <input type="file" required>
-        <button>Upload & Enkripsi</button>
+    
+    <form method="POST" action="{{ url_for('encrypt_file') }}" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="encrypt">
+        
+        <label>Pilih File untuk Enkripsi:</label>
+        <input type="file" name="encrypt_file" required>
+        <button type="submit">Upload & Enkripsi</button>
     </form>
+    
+    {% if encrypt_download_file %}
+        <div class="result-box" style="margin-top: 20px;">
+            <p>✅ File Anda telah terenkripsi.</p>
+            <a href="{{ url_for('download_generated_file', filename=encrypt_download_file) }}" style="text-decoration: none;">
+                <button>Unduh File Terenkripsi (.bin)</button>
+            </a>
+        </div>
+    {% endif %}
+    
+</div>
+
+
+<hr style="border: 0; height: 1px; background: #334155; margin: 40px 0;">
+
+<div class="container" style="background: none; box-shadow: none; padding: 0;">
+    <h2>🔓 Dekripsi File</h2>
+    
+    <form method="POST" action="{{ url_for('encrypt_file') }}" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="decrypt">
+        
+        <label>Pilih File Terenkripsi (.bin) untuk Dekripsi:</label>
+        <input type="file" name="decrypt_file" required>
+        <button type="submit">Upload & Dekripsi</button>
+    </form>
+    
+    {% if decrypt_download_file %}
+        <div class="result-box" style="margin-top: 20px;">
+            <p>✅ File Anda telah didekripsi. <small>File hasil: {{ decrypt_download_file }}</small></p>
+            <a href="{{ url_for('download_generated_file', filename=decrypt_download_file) }}" style="text-decoration: none;">
+                <button>Unduh File Hasil Dekripsi</button>
+            </a>
+        </div>
+    {% endif %}
+
 </div>
 {% endblock %}

@@ -29,6 +29,84 @@
             "original_file": "ce3e4d40cf649ed479d7acc56aad8a...",
             "generated_file": null,
             "timestamp": "WHAXE/v/"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "arduino.htm",
+            "generated_file": "encrypted_arduino.htm.bin",
+            "timestamp": "bMQKGXZQ"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "arduino.htm",
+            "generated_file": "encrypted_arduino.htm.bin",
+            "timestamp": "Yrif4bOO"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "arduino.htm",
+            "generated_file": "encrypted_arduino.htm.bin",
+            "timestamp": "e1OlpKur"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "arduino.htm",
+            "generated_file": "encrypted_arduino.htm.bin",
+            "timestamp": "Rb1nhyup"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_arduino.htm.bin",
+            "generated_file": "decrypted_arduino.htm",
+            "timestamp": "CmOXi8AY"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_arduino.htm.bin",
+            "generated_file": "decrypted_arduino.htm",
+            "timestamp": "gy3o51J0"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_arduino.htm.bin",
+            "generated_file": "decrypted_arduino.htm",
+            "timestamp": "ChLJvOKe"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_arduino.htm.bin",
+            "generated_file": "decrypted_arduino.htm",
+            "timestamp": "GB6c4PIi"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "PERANCANGAN INFRASTRUKTUR WEB SERVER DAN DATABASE.pdf",
+            "generated_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
+            "timestamp": "tb4fs+5w"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
+            "generated_file": "decrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf",
+            "timestamp": "mcs5pDVu"
+        },
+        {
+            "action": "Encrypt File",
+            "original_file": "Public.pem",
+            "generated_file": "encrypted_Public.pem.bin",
+            "timestamp": "fklRYVpu"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_Public.pem.bin",
+            "generated_file": "decrypted_Public.pem",
+            "timestamp": "7JPeVlFU"
+        },
+        {
+            "action": "Decrypt File",
+            "original_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
+            "generated_file": "decrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf",
+            "timestamp": "ZbbO1yBY"
         }
     ]
 }

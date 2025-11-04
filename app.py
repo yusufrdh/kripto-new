@@ -410,50 +410,31 @@ def edit_profile():
         phone=decrypted_phone
     )
 
-# app.py
 @app.route("/encrypt_text", methods=["GET", "POST"])
 @login_required
 def encrypt_text():
-    """Halaman untuk enkripsi dan dekripsi teks."""
-    result_text = None
-    action_type = None
-    input_text = ""
-
+    """Halaman untuk enkripsi teks (logika penuh)."""
+    encrypted_text_hex = None
     if request.method == "POST":
         try:
-            # Mengambil input teks dan aksi (encrypt/decrypt) dari form
-            input_text = request.form["text_input"]
-            action = request.form.get("action") 
-
-            if action == "encrypt":
-                # --- LOGIKA ENKRIPSI ---
-                text_bytes = input_text.encode('utf-8')
-                encrypted_data = aes_encrypt_bytes(aes_key, text_bytes)
-                result_text = encrypted_data.hex() # Hasil dalam bentuk Hex String
-                action_type = "Enkripsi"
-                
-                flash("Teks berhasil dienkripsi!", "success")
-                add_history(session["username"], "Encrypt Text", input_text[:30]+"...")
-                
-            elif action == "decrypt":
-                # --- LOGIKA DEKRIPSI ---
-                # Input adalah string hex, konversi ke bytes
-                encrypted_data = bytes.fromhex(input_text)
-                decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_data)
-                result_text = decrypted_bytes.decode('utf-8') # Hasil dekripsi (Plaintext)
-                action_type = "Dekripsi"
-                
-                flash("Teks berhasil didekripsi!", "success")
-                add_history(session["username"], "Decrypt Text", input_text[:30]+"...")
-            else:
-                raise ValueError("Aksi tidak valid.")
+            # Mengambil input dari form dengan name="text_input"
+            text_to_encrypt = request.form["text_input"] 
+            text_bytes = text_to_encrypt.encode('utf-8')
+            
+            # Enkripsi menggunakan AES key global
+            encrypted_data = aes_encrypt_bytes(aes_key, text_bytes)
+            # Mengubah hasil enkripsi ke format heksadesimal untuk ditampilkan
+            encrypted_text_hex = encrypted_data.hex()
+            
+            flash("Teks berhasil dienkripsi!", "success")
+            # Simpan ke history
+            add_history(session["username"], "Encrypt Text", text_to_encrypt[:30]+"...")
 
         except Exception as e:
-            flash(f"Terjadi error saat {action_type.lower() if action_type else 'pemrosesan'}: Pastikan input sudah benar (teks biasa untuk enkripsi, heksadesimal untuk dekripsi). Error: {e}", "error")
-            result_text = None
+            flash(f"Terjadi error saat enkripsi: {e}", "error")
             
-    # Mengirimkan input_text (untuk mempertahankan nilai di textarea) dan result_text ke template
-    return render_template("encrypt_text.html", result_text=result_text, input_text=input_text)
+    return render_template("encrypt_text.html", encrypted_result=encrypted_text_hex)
+
 
 @app.route("/encrypt_image", methods=["GET", "POST"])
 @login_required
@@ -498,47 +479,88 @@ def encrypt_image():
     return render_template("encrypt_image.html", download_file=download_filename)
 
 
+# app.py (Ganti fungsi encrypt_file yang sudah ada)
+
 @app.route("/encrypt_file", methods=["GET", "POST"])
 @login_required
 def encrypt_file():
-    """Halaman untuk enkripsi file (logika penuh)."""
-    download_filename = None
+    """Halaman untuk enkripsi dan dekripsi file (Gabungan)."""
+    
+    encrypt_download_filename = None
+    decrypt_download_filename = None
+    
     if request.method == "POST":
-        try:
-            if "file" not in request.files:
-                flash("Harap masukkan file.", "error")
-                return redirect(request.url)
+        # Ambil nilai dari input tersembunyi 'action'
+        action = request.form.get("action") 
+        
+        # --- LOGIKA ENKRIPSI ---
+        if action == "encrypt":
+            try:
+                # Menggunakan request.files.get() untuk menghindari KeyError
+                file = request.files.get("encrypt_file") 
                 
-            file = request.files["file"]
-            if file.filename == "":
-                flash("File tidak boleh kosong.", "error")
-                return redirect(request.url)
+                # Pengecekan file yang lebih robust: file tidak ada ATAU nama file kosong
+                if not file or file.filename == "":
+                    flash("Harap pilih file untuk enkripsi sebelum menekan tombol.", "error")
+                    return redirect(url_for("encrypt_file"))
 
-            # 1. Baca file sebagai bytes
-            file_bytes = file.read()
-            
-            # 2. Enkripsi bytes
-            encrypted_data = aes_encrypt_bytes(aes_key, file_bytes)
-            
-            # 3. Siapkan file untuk di-download
-            output_filename = f"encrypted_{secure_filename(file.filename)}.bin"
-            output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
-            
-            with open(output_path, "wb") as f:
-                f.write(encrypted_data)
+                file_bytes = file.read()
+                # ALGORITMA ENKRIPSI
+                encrypted_data = aes_encrypt_bytes(aes_key, file_bytes)
+                
+                output_filename = f"encrypted_{secure_filename(file.filename)}.bin"
+                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
+                
+                with open(output_path, "wb") as f:
+                    f.write(encrypted_data)
 
-            flash("File berhasil dienkripsi!", "success")
-            download_filename = output_filename
-            
-            # 4. Simpan ke history
-            add_history(session["username"], "Encrypt File", file.filename, output_filename)
+                flash("File berhasil dienkripsi!", "success")
+                encrypt_download_filename = output_filename
+                add_history(session["username"], "Encrypt File", file.filename, output_filename)
 
-        except Exception as e:
-            flash(f"Terjadi error: {e}", "error")
+            except Exception as e:
+                flash(f"Terjadi error saat enkripsi: {e}", "error")
+        
+        # --- LOGIKA DEKRIPSI (Algoritma Dekripsi File) ---
+        elif action == "decrypt":
+            try:
+                # Menggunakan request.files.get() untuk menghindari KeyError
+                file = request.files.get("decrypt_file") 
+                
+                # Pengecekan file yang lebih robust: file tidak ada ATAU nama file kosong
+                if not file or file.filename == "":
+                    flash("Harap pilih file terenkripsi sebelum menekan tombol.", "error")
+                    return redirect(url_for("encrypt_file"))
 
-    return render_template("encrypt_file.html", download_file=download_filename)
+                encrypted_file_bytes = file.read()
+                
+                # ALGORITMA DEKRIPSI
+                # aes_decrypt_bytes adalah fungsi yang sudah ada (menggunakan AES key global, IV, dan unpad)
+                decrypted_data = aes_decrypt_bytes(aes_key, encrypted_file_bytes)
+                
+                # Menentukan nama file output
+                original_filename = secure_filename(file.filename).replace("encrypted_", "").replace(".bin", "")
+                output_filename = f"decrypted_{original_filename}"
+                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
+                
+                with open(output_path, "wb") as f:
+                    f.write(decrypted_data)
+
+                flash("File berhasil didekripsi!", "success")
+                decrypt_download_filename = output_filename
+                add_history(session["username"], "Decrypt File", file.filename, output_filename)
+
+            except Exception as e:
+                # Error ini sering muncul jika file bukan file AES yang valid (misalnya Padding Error)
+                print(f"Error dekripsi file: {e}")
+                flash(f"Terjadi error saat dekripsi. Pastikan file adalah file enkripsi AES yang valid: {e}", "error")
 
 
+    return render_template(
+        "encrypt_file.html", 
+        encrypt_download_file=encrypt_download_filename,
+        decrypt_download_file=decrypt_download_filename
+    )
 @app.route("/history")
 @login_required
 def history():
