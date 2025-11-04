@@ -171,6 +171,20 @@ def login_required(f):
 
 # app.py
 
+# Fungsi dekripsi helper (bisa dibuat di atas, tapi kita masukkan ke dalam index() dulu)
+def decrypt_profile_data(encrypted_b64):
+    """Dekripsi data Base64 terenkripsi menjadi string."""
+    if not encrypted_b64:
+        return None # Kembalikan None jika tidak ada data
+    try:
+        encrypted_bytes = base64.b64decode(encrypted_b64)
+        decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_bytes)
+        return decrypted_bytes.decode('utf-8')
+    except Exception as e:
+        print(f"Error dekripsi data: {e}")
+        return None # Kembalikan None jika dekripsi gagal
+
+
 @app.route("/")
 def index():
     """Halaman utama / landing page."""
@@ -181,22 +195,24 @@ def index():
         username = session["username"]
         user_db = load_data(get_user_db_path())
         
-        # Cari Fullname, jika tidak ada, gunakan Username
+        # --- START: Logika Dekripsi untuk display_name ---
+        decrypted_fullname = None
         if username in user_db and user_db[username].get("fullname"):
-            display_name = user_db[username]["fullname"]
+            encrypted_fn_b64 = user_db[username]["fullname"]
+            decrypted_fullname = decrypt_profile_data(encrypted_fn_b64)
+        
+        # Cari Fullname yang sudah didekripsi, jika tidak ada, gunakan Username
+        if decrypted_fullname:
+            display_name = decrypted_fullname
         else:
             display_name = username
+        # --- END: Logika Dekripsi untuk display_name ---
             
-        # HAPUS: if "logged_in" in session: return redirect(url_for("profile"))
-        
         return render_template("index.html", display_name=display_name)
-    
-    # Jika tidak login, render index.html yang akan terlihat kosong
-    # Anda juga bisa melakukan redirect ke login di sini jika diinginkan:
-    # return redirect(url_for("login"))
     
     # Biarkan seperti ini untuk menampilkan "Selamat Datang" tanpa nama jika tidak login
     return render_template("index.html", display_name=display_name)
+    
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Halaman login user (dari kodingan baru)."""
@@ -256,12 +272,9 @@ def logout():
 # RUTE FITUR APLIKASI (Sesuai Gambar Anda)
 # =====================================================================
 
-# app.py
+# yusufrdh/kripto-new/kripto-new-27863cc49d61687d36e15b957b08e6369ae8a35a/app.py
 
-# app.py
-
-# ... (Pastikan semua fungsi helper dan AES key sudah dimuat)
-
+# ... (Baris 248)
 # [Rute Profil/Dashboard] - Tampilan Statis Data
 @app.route("/profile") 
 @login_required
@@ -272,14 +285,38 @@ def profile_dashboard():
     user_db = load_data(get_user_db_path())
     user_data = user_db.get(username, {})
     
-    display_name = user_data.get("fullname") or username
+    # === START: Tambahkan Logika Dekripsi Data Profil di Sini ===
+    def decrypt_profile_data(encrypted_b64):
+        """Dekripsi data Base64 terenkripsi menjadi string."""
+        if not encrypted_b64:
+            return "Belum Diisi"
+        try:
+            encrypted_bytes = base64.b64decode(encrypted_b64)
+            decrypted_bytes = aes_decrypt_bytes(aes_key, encrypted_bytes)
+            return decrypted_bytes.decode('utf-8')
+        except Exception as e:
+            print(f"Error dekripsi data: {e}")
+            return "Data Error/Belum Diisi" # Tampilkan pesan error jika dekripsi gagal
+
+    decrypted_fullname = decrypt_profile_data(user_data.get("fullname"))
+    decrypted_email = decrypt_profile_data(user_data.get("email"))
+    decrypted_phone = decrypt_profile_data(user_data.get("phone"))
+    # === END: Logika Dekripsi ===
+    
+    # Gunakan Nama Lengkap yang didekripsi sebagai display_name
+    display_name = decrypted_fullname if decrypted_fullname != "Belum Diisi" else username
 
     return render_template(
         "profile_dashboard.html", 
         display_name=display_name,
-        fullname=user_data.get("fullname", "Belum Diisi"),
-        email=user_data.get("email", "Belum Diisi"),
-        phone=user_data.get("phone", "Belum Diisi")
+        # Ganti data yang dikirim ke template menjadi data yang sudah didekripsi
+        fullname=decrypted_fullname,
+        email=decrypted_email,
+        phone=decrypted_phone
+        # BARIS ASLI:
+        # fullname=user_data.get("fullname", "Belum Diisi"),
+        # email=user_data.get("email", "Belum Diisi"),
+        # phone=user_data.get("phone", "Belum Diisi")
     )
 
 # ... (Setelah ini baru dilanjutkan dengan @app.route("/edit_profile") dan rute lainnya)
