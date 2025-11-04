@@ -107,6 +107,24 @@
             "original_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
             "generated_file": "decrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf",
             "timestamp": "ZbbO1yBY"
+        },
+        {
+            "action": "Steganography Encrypt",
+            "original_file": "Perception_Layer_Lapisan_FisikPerangkat.png",
+            "generated_file": "stego_Perception_Layer_Lapisan_FisikPerangkat.png.png",
+            "timestamp": "Qv6KoNUR"
+        },
+        {
+            "action": "Steganography Encrypt",
+            "original_file": "Hertech_Poster.jpg",
+            "generated_file": "stego_Hertech_Poster.png",
+            "timestamp": "S0+we0zu"
+        },
+        {
+            "action": "Steganography Decrypt",
+            "original_file": "stego_Hertech_Poster.png",
+            "generated_file": null,
+            "timestamp": "hGoT43BF"
         }
     ]
 }

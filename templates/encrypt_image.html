@@ -1,12 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Enkripsi Gambar{% endblock %}
+{% block title %}Steganografi Gambar{% endblock %}
 {% block content %}
 <div class="container">
-    <h2>🖼️ Enkripsi Gambar</h2>
-    <form enctype="multipart/form-data">
-        <label>Pilih Gambar:</label>
-        <input type="file" accept="image/*" required>
-        <button>Proses Enkripsi</button>
-    </form>
+    <h2>🖼️ Steganografi Gambar</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-container mb-3">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="card p-4 mb-4">
+        <h4 class="card-title">Sembunyikan Pesan (Encrypt)</h4>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="encrypt">
+            
+            <label for="image_input" class="form-label">Pilih Gambar:</label>
+            <input type="file" id="image_input" name="image" accept="image/*" required class="form-control mb-3">
+            
+            <label for="message_input" class="form-label">Pesan Rahasia:</label>
+            <textarea id="message_input" name="message" required class="form-control mb-3" placeholder="Masukkan pesan rahasia yang akan disembunyikan..."></textarea>
+            
+            <button type="submit" class="btn btn-primary w-100">Proses Sembunyikan Pesan</button>
+        </form>
+        
+        {% if encrypt_download_file %}
+            <div class="alert alert-success mt-4 text-center">
+                Pesan berhasil disembunyikan. Silakan download hasil gambar steganografi.
+                <a href="{{ url_for('download_generated_file', filename=encrypt_download_file) }}" class="btn btn-success mt-2 d-block">
+                    ⬇️ Download Gambar Hasil Steganografi ({{ encrypt_download_file }})
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <hr class="my-5">
+
+    <div class="card p-4">
+        <h4 class="card-title">Temukan Pesan (Decrypt)</h4>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="decrypt">
+
+            <label for="decrypt_image_input" class="form-label">Pilih Gambar Steganografi:</label>
+            <input type="file" id="decrypt_image_input" name="decrypt_image" accept="image/png" required class="form-control mb-3">
+            
+            <button type="submit" class="btn btn-warning w-100">Proses Temukan Pesan</button>
+        </form>
+        
+        {% if decrypted_message is not none %}
+            <div class="alert alert-info mt-4">
+                <p><strong>Pesan Rahasia Ditemukan:</strong></p>
+                <div class="bg-light p-3 border rounded">
+                    <p>{{ decrypted_message }}</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
 </div>
 {% endblock %}

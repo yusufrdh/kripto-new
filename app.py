@@ -436,48 +436,89 @@ def encrypt_text():
     return render_template("encrypt_text.html", encrypted_result=encrypted_text_hex)
 
 
+# app.py (Ganti fungsi encrypt_image yang sudah ada)
+
 @app.route("/encrypt_image", methods=["GET", "POST"])
 @login_required
 def encrypt_image():
-    """Halaman untuk steganografi gambar (logika penuh)."""
-    download_filename = None
+    """Halaman untuk steganografi gambar (enkripsi/dekripsi)."""
+    encrypt_download_filename = None
+    decrypted_message = None # Variabel baru untuk pesan dekripsi
+    
     if request.method == "POST":
-        try:
-            # 1. Cek file dan pesan
-            if "image" not in request.files or "message" not in request.form:
-                flash("Harap masukkan file gambar dan pesan rahasia.", "error")
-                return redirect(request.url)
+        # Ambil nilai dari input tersembunyi 'action'
+        action = request.form.get("action") 
+        
+        # --- LOGIKA ENKRIPSI (Steganography Encrypt) ---
+        if action == "encrypt":
+            try:
+                if "image" not in request.files or "message" not in request.form:
+                    flash("Harap masukkan file gambar dan pesan rahasia.", "error")
+                    return redirect(request.url)
+                    
+                file = request.files["image"]
+                message = request.form["message"]
                 
-            file = request.files["image"]
-            message = request.form["message"]
-            
-            if file.filename == "" or message == "":
-                flash("File atau pesan tidak boleh kosong.", "error")
-                return redirect(request.url)
+                if file.filename == "" or message == "":
+                    flash("File atau pesan tidak boleh kosong.", "error")
+                    return redirect(request.url)
+                    
+                # 1. Simpan file upload
+                filename = secure_filename(file.filename)
+                input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                file.save(input_path)
                 
-            # 2. Simpan file upload
-            filename = secure_filename(file.filename)
-            input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file.save(input_path)
-            
-            # 3. Proses Steganografi
-            output_filename = f"stego_{filename}.png" # Pastikan output PNG
-            output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
-            
-            if not steganography_encrypt(input_path, message, output_path):
-                raise Exception("Gagal melakukan steganografi.")
+                # 2. Proses Steganografi (Perbaikan Nama File)
+                name_only = os.path.splitext(filename)[0] # Ambil nama file tanpa ekstensi
+                output_filename = f"stego_{name_only}.png" # Hanya tambahkan satu .png
+                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
                 
-            flash("Pesan berhasil disembunyikan ke dalam gambar!", "success")
-            download_filename = output_filename
-            
-            # 4. Simpan ke history
-            add_history(session["username"], "Steganography Encrypt", filename, output_filename)
+                if not steganography_encrypt(input_path, message, output_path):
+                    raise Exception("Gagal melakukan steganografi.")
+                    
+                flash("Pesan berhasil disembunyikan ke dalam gambar!", "success")
+                encrypt_download_filename = output_filename
+                
+                # 3. Simpan ke history
+                add_history(session["username"], "Steganography Encrypt", filename, output_filename)
+                
+            except Exception as e:
+                flash(f"Terjadi error: {e}", "error")
 
-        except Exception as e:
-            flash(f"Terjadi error: {e}", "error")
-            
-    return render_template("encrypt_image.html", download_file=download_filename)
+        # --- LOGIKA DEKRIPSI (Steganography Decrypt) ---
+        elif action == "decrypt":
+            try:
+                # Menggunakan name input file yang berbeda: decrypt_image
+                file = request.files.get("decrypt_image") 
+                
+                if not file or file.filename == "":
+                    flash("Harap pilih gambar yang mengandung pesan rahasia.", "error")
+                    return redirect(request.url)
 
+                filename = secure_filename(file.filename)
+                input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                file.save(input_path)
+                
+                # 1. Proses Dekripsi
+                message = steganography_decrypt(input_path) # steganography_decrypt sudah tersedia di app.py
+
+                if message:
+                    decrypted_message = message
+                    flash("Pesan rahasia berhasil ditemukan di dalam gambar!", "success")
+                    add_history(session["username"], "Steganography Decrypt", filename)
+                else:
+                    flash("Tidak ditemukan pesan rahasia di dalam gambar tersebut. Pastikan itu adalah file PNG steganografi.", "warning")
+
+            except Exception as e:
+                print(f"Error saat dekripsi: {e}")
+                flash(f"Terjadi error saat dekripsi. Pastikan file adalah file gambar PNG yang valid: {e}", "error")
+
+            
+    return render_template(
+        "encrypt_image.html", 
+        encrypt_download_file=encrypt_download_filename,
+        decrypted_message=decrypted_message
+    )
 
 # app.py (Ganti fungsi encrypt_file yang sudah ada)
 
