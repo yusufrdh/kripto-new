@@ -9,7 +9,6 @@
           {% if title.startswith('Riwayat Aktivitas SEMUA') %}
           <th>Pengguna</th>
           {% endif %}
-          <th>Tanggal</th>
           <th>Aktivitas</th>
         </tr>
       </thead>
@@ -19,11 +18,10 @@
             {% if title.startswith('Riwayat Aktivitas SEMUA') %}
             <td>{{ history.user }}</td>
             {% endif %}
-            <td>{{ history.timestamp }}</td>
             <td>{{ history.action }} file: {{ history.original_file }} {% if history.generated_file %} -> {{ history.generated_file }} <a href="{{ url_for('download_generated_file', filename=history.generated_file) }}">(Download)</a>{% endif %}</td>
         </tr>
         {% else %}
-        <tr><td colspan="2">Belum ada riwayat aktivitas.</td></tr>
+        <tr><td colspan="{% if title.startswith('Riwayat Aktivitas SEMUA') %}2{% else %}1{% endif %}">Belum ada riwayat aktivitas.</td></tr>
         {% endfor %}
       </tbody>
     </table>

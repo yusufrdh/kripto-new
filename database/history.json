@@ -125,6 +125,84 @@
             "original_file": "stego_Hertech_Poster.png",
             "generated_file": null,
             "timestamp": "hGoT43BF"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "dddddddddd...",
+            "generated_file": null,
+            "timestamp": "DDkkMpok"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "sdsds...",
+            "generated_file": null,
+            "timestamp": "jnGROk5j"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "sdsds...",
+            "generated_file": null,
+            "timestamp": "q/0ji8/x"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "sdsds...",
+            "generated_file": null,
+            "timestamp": "cFJltyKs"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "sdsds...",
+            "generated_file": null,
+            "timestamp": "SG99+jOo"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "sdsds...",
+            "generated_file": null,
+            "timestamp": "F60aMUhd"
+        },
+        {
+            "action": "Encrypt File (RSA Hybrid)",
+            "original_file": "TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf",
+            "generated_file": "hybrid_rsa_aes_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf.bin",
+            "timestamp": "/H5f5xZ2"
+        },
+        {
+            "action": "Decrypt File (RSA Hybrid)",
+            "original_file": "hybrid_rsa_aes_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf.bin",
+            "generated_file": "decrypted_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf",
+            "timestamp": "14PwIoLg"
+        },
+        {
+            "action": "LSB Stego Encrypt",
+            "original_file": "Perception_Layer_Lapisan_FisikPerangkat.png",
+            "generated_file": "stego_lsb_Perception_Layer_Lapisan_FisikPerangkat.png",
+            "timestamp": "Mvr7yRdy"
+        },
+        {
+            "action": "LSB Stego Decrypt",
+            "original_file": "stego_lsb_Perception_Layer_Lapisan_FisikPerangkat.png",
+            "generated_file": null,
+            "timestamp": "8NVXmljM"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "ddd...",
+            "generated_file": null,
+            "timestamp": "T9QMF/BR"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "adada...",
+            "generated_file": null,
+            "timestamp": "BDPRiF9y"
+        },
+        {
+            "action": "Decrypt Text (AES+Vigenere)",
+            "original_file": "Bt8+Jc6rG7m95HR49qSeWg1fVZsVZw...",
+            "generated_file": null,
+            "timestamp": "9J3mz1TJ"
         }
     ]
 }

@@ -556,28 +556,66 @@ def edit_profile():
 @app.route("/encrypt_text", methods=["GET", "POST"])
 @login_required
 def encrypt_text():
-    """Halaman untuk enkripsi teks (Vigenere + AES-256 GCM)."""
-    encrypted_text_b64 = None
+    """Halaman untuk enkripsi DAN dekripsi teks (Vigenere + AES-256 GCM)."""
+    
+    # Variabel untuk dikirim ke template
+    result_text = None
+    input_text = "" # Untuk menyimpan input pengguna agar tidak hilang
+    
     if request.method == "POST":
         try:
-            text_to_encrypt = request.form["text_input"] 
+            # Ambil aksi (tombol 'encrypt' atau 'decrypt')
+            action = request.form.get("action") 
+            input_text = request.form.get("text_input", "")
             
-            # 1. Enkripsi Vigenere
-            vigenere_ciphertext = vigenere_encrypt(text_to_encrypt, VIGENERE_KEY)
+            if not input_text:
+                flash("Teks input tidak boleh kosong.", "error")
+                return render_template("encrypt_text.html", input_text=input_text, result_text=result_text)
+
+            # --- LOGIKA ENKRIPSI ---
+            if action == "encrypt":
+                # 1. Enkripsi Vigenere
+                vigenere_ciphertext = vigenere_encrypt(input_text, VIGENERE_KEY)
+                
+                # 2. Enkripsi AES-256 GCM
+                text_bytes = vigenere_ciphertext.encode('utf-8')
+                encrypted_data = aes_encrypt_gcm(aes_key, text_bytes)
+                
+                result_text = base64.b64encode(encrypted_data).decode('utf-8')
+                
+                flash("Teks berhasil dienkripsi dengan Vigenere + AES-256 GCM!", "success")
+                add_history(session["username"], "Encrypt Text (Vigenere+AES)", input_text[:30]+"...")
             
-            # 2. Enkripsi AES-256 GCM
-            text_bytes = vigenere_ciphertext.encode('utf-8')
-            encrypted_data = aes_encrypt_gcm(aes_key, text_bytes)
-            
-            encrypted_text_b64 = base64.b64encode(encrypted_data).decode('utf-8')
-            
-            flash("Teks berhasil dienkripsi dengan Vigenere + AES-256 GCM!", "success")
-            add_history(session["username"], "Encrypt Text (Vigenere+AES)", text_to_encrypt[:30]+"...")
+            # --- LOGIKA DEKRIPSI (BARU) ---
+            elif action == "decrypt":
+                try:
+                    # 1. Decode Base64
+                    encrypted_data = base64.b64decode(input_text)
+                    
+                    # 2. Dekripsi AES-256 GCM
+                    decrypted_vigenere_bytes = aes_decrypt_gcm(aes_key, encrypted_data)
+                    decrypted_vigenere_text = decrypted_vigenere_bytes.decode('utf-8')
+                    
+                    # 3. Dekripsi Vigenere
+                    result_text = vigenere_decrypt(decrypted_vigenere_text, VIGENERE_KEY)
+                    
+                    flash("Teks berhasil didekripsi!", "success")
+                    add_history(session["username"], "Decrypt Text (AES+Vigenere)", input_text[:30]+"...")
+                    
+                except Exception as e:
+                    print(f"Error dekripsi: {e}")
+                    flash("Dekripsi gagal. Pastikan teks Base64 valid dan kunci benar.", "error")
+                    result_text = None
 
         except Exception as e:
-            flash(f"Terjadi error saat enkripsi: {e}", "error")
+            flash(f"Terjadi error: {e}", "error")
             
-    return render_template("encrypt_text.html", encrypted_result=encrypted_text_b64)
+    # Kirim variabel 'result_text' dan 'input_text' ke template
+    return render_template(
+        "encrypt_text.html", 
+        result_text=result_text,
+        input_text=input_text 
+    )
 
 
 @app.route("/encrypt_image", methods=["GET", "POST"])
