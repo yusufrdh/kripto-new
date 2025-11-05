@@ -203,6 +203,18 @@
             "original_file": "Bt8+Jc6rG7m95HR49qSeWg1fVZsVZw...",
             "generated_file": null,
             "timestamp": "9J3mz1TJ"
+        },
+        {
+            "action": "LSB Stego Encrypt",
+            "original_file": "Hertech_Poster.jpg",
+            "generated_file": "stego_lsb_Hertech_Poster.png (in-memory)",
+            "timestamp": "vZke6aes"
+        },
+        {
+            "action": "LSB Stego Decrypt",
+            "original_file": "stego_lsb_Hertech_Poster.png",
+            "generated_file": null,
+            "timestamp": "H4Kx/gWK"
         }
     ]
 }

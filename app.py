@@ -186,10 +186,10 @@ def from_bit_array(bits):
         bits = np.pad(bits, (0, 8 - (len(bits) % 8)), 'constant', constant_values=0)
     return np.packbits(bits).tobytes()
 
-def lsb_hide(image_path, secret_bytes, output_path):
-    """LSB 256 GCM: Menyembunyikan pesan di 1 bit LSB."""
+def lsb_hide(image_stream, secret_bytes, output_stream):
+    """LSB 256 GCM: Menyembunyikan pesan di 1 bit LSB (dari stream ke stream)."""
     try:
-        img = Image.open(image_path).convert("RGB")
+        img = Image.open(image_stream).convert("RGB") # MODIFIED: Baca dari stream
         img_np = np.array(img)
         
         data_len = len(secret_bytes)
@@ -223,16 +223,17 @@ def lsb_hide(image_path, secret_bytes, output_path):
                 break
                 
         new_img = Image.fromarray(img_np, 'RGB')
-        new_img.save(output_path, "PNG")
+        new_img.save(output_stream, "PNG") # MODIFIED: Tulis ke stream
         return True
     except Exception as e:
         print(f"Error lsb_hide: {e}")
         return False
 
-def lsb_retrieve(image_path):
-    """LSB 256 GCM: Mengambil pesan tersembunyi."""
+# GANTI FUNGSI INI
+def lsb_retrieve(image_stream):
+    """LSB 256 GCM: Mengambil pesan tersembunyi (dari stream)."""
     try:
-        img = Image.open(image_path).convert("RGB")
+        img = Image.open(image_stream).convert("RGB") # MODIFIED: Baca dari stream
         img_np = np.array(img)
         
         # 1. Ambil panjang data (32 bits = 4 bytes)
@@ -618,11 +619,13 @@ def encrypt_text():
     )
 
 
+# GANTI SELURUH RUTE INI
 @app.route("/encrypt_image", methods=["GET", "POST"])
 @login_required
 def encrypt_image():
-    """Halaman untuk steganografi gambar (AES-256 GCM + LSB)."""
-    encrypt_download_filename = None
+    """Halaman steganografi (AES-256 GCM + LSB) - VERSI AMAN (IN-MEMORY)."""
+    
+    # Ini hanya digunakan untuk bagian dekripsi
     decrypted_message = None 
     
     if request.method == "POST":
@@ -641,30 +644,44 @@ def encrypt_image():
                 if file.filename == "" or message == "":
                     flash("File atau pesan tidak boleh kosong.", "error")
                     return redirect(request.url)
-                    
+                
+                # Ambil nama file asli untuk output
                 filename = secure_filename(file.filename)
-                input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-                file.save(input_path)
+                name_only = os.path.splitext(filename)[0]
+                output_filename = f"stego_lsb_{name_only}.png"
                 
                 # 1. Enkripsi Pesan (AES-256 GCM)
                 message_bytes = message.encode('utf-8')
                 encrypted_message = aes_encrypt_gcm(aes_key, message_bytes)
                 
-                # 2. Proses Steganografi (LSB)
-                name_only = os.path.splitext(filename)[0]
-                output_filename = f"stego_lsb_{name_only}.png"
-                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
-                
-                if not lsb_hide(input_path, encrypted_message, output_path):
+                # --- PERUBAHAN KEAMANAN ---
+                # Buat file di memori
+                img_in_memory = BytesIO()
+
+                # 2. Proses Steganografi (LSB) dari stream ke stream
+                # (Gunakan file.stream untuk membaca file yg diupload tanpa menyimpan)
+                # JANGAN simpan file input ke 'uploads'
+                if not lsb_hide(file.stream, encrypted_message, img_in_memory):
                     raise Exception("Gagal melakukan steganografi LSB. Mungkin pesan terlalu besar.")
-                    
-                flash("Pesan berhasil dienkripsi dan disembunyikan menggunakan AES-256 GCM + LSB!", "success")
-                encrypt_download_filename = output_filename
                 
-                add_history(session["username"], "LSB Stego Encrypt", filename, output_filename)
+                # Pindahkan pointer ke awal file di memori
+                img_in_memory.seek(0)
+                
+                # Catat history SEBELUM mengirim file
+                add_history(session["username"], "LSB Stego Encrypt", filename, output_filename + " (in-memory)")
+                
+                # 3. Langsung kirim file ke pengguna, JANGAN SIMPAN KE 'generated'
+                return send_file(
+                    img_in_memory,
+                    download_name=output_filename,
+                    as_attachment=True,
+                    mimetype='image/png'
+                )
+                # --- AKHIR PERUBAHAN ---
                 
             except Exception as e:
                 flash(f"Terjadi error: {e}", "error")
+                return redirect(request.url) # Redirect jika error
 
         # --- LOGIKA DEKRIPSI (LSB Retrieval + AES-256 GCM Decrypt) ---
         elif action == "decrypt":
@@ -676,11 +693,12 @@ def encrypt_image():
                     return redirect(request.url)
 
                 filename = secure_filename(file.filename)
-                input_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-                file.save(input_path)
                 
-                # 1. Proses Pengambilan Pesan (LSB Retrieve)
-                encrypted_message = lsb_retrieve(input_path)
+                # --- PERUBAHAN KEAMANAN ---
+                # 1. Proses Pengambilan Pesan (LSB Retrieve) dari stream
+                # JANGAN simpan file input ke 'uploads'
+                encrypted_message = lsb_retrieve(file.stream)
+                # --- AKHIR PERUBAHAN ---
 
                 if encrypted_message:
                     # 2. Dekripsi Pesan (AES-256 GCM)
@@ -690,32 +708,31 @@ def encrypt_image():
                     flash("Pesan rahasia berhasil ditemukan dan didekripsi!", "success")
                     add_history(session["username"], "LSB Stego Decrypt", filename)
                 else:
-                    flash("Tidak ditemukan pesan rahasia di dalam gambar tersebut. Pastikan itu adalah file PNG/JPG steganografi LSB.", "warning")
+                    flash("Tidak ditemukan pesan rahasia di dalam gambar tersebut. Pastikan itu adalah file steganografi LSB yang valid.", "warning")
 
             except Exception as e:
                 print(f"Error saat dekripsi: {e}")
                 flash(f"Terjadi error saat dekripsi/verifikasi. Pastikan file adalah file gambar steganografi LSB yang valid: {e}", "error")
-
-            
+    
+    # Ini hanya akan tercapai jika method GET, atau jika action == 'decrypt'
     return render_template(
         "encrypt_image.html", 
-        encrypt_download_file=encrypt_download_filename,
+        encrypt_download_file=None, # Kita tidak lagi menggunakan ini
         decrypted_message=decrypted_message
     )
 
-# File Encryption/Decryption (RSA Hybrid)
+
 @app.route("/encrypt_file", methods=["GET", "POST"])
 @login_required
 def encrypt_file():
-    """Halaman untuk enkripsi dan dekripsi file (RSA Hybrid)."""
+    """Halaman untuk enkripsi dan dekripsi file (RSA Hybrid) - VERSI AMAN."""
     
     encrypt_download_filename = None
-    decrypt_download_filename = None
     
     if request.method == "POST":
         action = request.form.get("action") 
         
-        # --- LOGIKA ENKRIPSI (RSA Hybrid) ---
+        # --- LOGIKA ENKRIPSI (Tidak berubah, ini sudah aman) ---
         if action == "encrypt":
             try:
                 file = request.files.get("encrypt_file") 
@@ -726,7 +743,7 @@ def encrypt_file():
 
                 file_bytes = file.read()
                 
-                # 1. Generate Symmetric Key (AES-256) untuk enkripsi data
+                # 1. Generate Symmetric Key (AES-256)
                 session_key = get_random_bytes(32)
                 
                 # 2. Enkripsi File dengan Symmetric Key (AES-256 GCM)
@@ -751,8 +768,15 @@ def encrypt_file():
 
             except Exception as e:
                 flash(f"Terjadi error saat enkripsi: {e}", "error")
+            
+            # Setelah enkripsi, render template lagi dengan link download
+            return render_template(
+                "encrypt_file.html", 
+                encrypt_download_file=encrypt_download_filename,
+                decrypt_download_file=None # Pastikan ini ada
+            )
         
-        # --- LOGIKA DEKRIPSI (RSA Hybrid) ---
+        # --- LOGIKA DEKRIPSI (MODIFIKASI KEAMANAN) ---
         elif action == "decrypt":
             try:
                 file = request.files.get("decrypt_file") 
@@ -775,27 +799,37 @@ def encrypt_file():
                 # 3. Dekripsi File dengan Symmetric Key (AES-256 GCM)
                 decrypted_data = aes_decrypt_gcm(session_key, file_ciphertext)
                 
+                # --- PERUBAHAN INTI ---
                 # Menentukan nama file output
                 original_filename = secure_filename(file.filename).replace("hybrid_rsa_aes_", "").replace(".bin", "")
                 output_filename = f"decrypted_{original_filename}"
-                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
                 
-                with open(output_path, "wb") as f:
-                    f.write(decrypted_data)
+                # Buat file di memori, BUKAN di disk
+                file_in_memory = BytesIO(decrypted_data)
+                
+                # Catat history
+                add_history(session["username"], "Decrypt File (RSA Hybrid)", file.filename, output_filename + " (in-memory)")
 
-                flash("File berhasil didekripsi!", "success")
-                decrypt_download_filename = output_filename
-                add_history(session["username"], "Decrypt File (RSA Hybrid)", file.filename, output_filename)
+                # 7. Langsung kirim file ke pengguna, JANGAN SIMPAN KE DISK
+                return send_file(
+                    file_in_memory,
+                    download_name=output_filename,
+                    as_attachment=True,
+                    mimetype='application/octet-stream' # Tipe aman untuk semua file
+                )
+                # --- AKHIR PERUBAHAN ---
 
             except Exception as e:
                 print(f"Error dekripsi file: {e}")
                 flash(f"Terjadi error saat dekripsi. Pastikan file adalah file enkripsi Hybrid RSA-AES yang valid: {e}", "error")
+                # Jika gagal, kembali ke halaman
+                return redirect(url_for("encrypt_file"))
 
-
+    # Jika method GET (pertama kali load halaman)
     return render_template(
         "encrypt_file.html", 
-        encrypt_download_file=encrypt_download_filename,
-        decrypt_download_file=decrypt_download_filename
+        encrypt_download_file=None,
+        decrypt_download_file=None
     )
     
 @app.route("/history")
