@@ -19,12 +19,6 @@
             "timestamp": "SXzGyBjB"
         },
         {
-            "action": "Encrypt Text",
-            "original_file": "ucup cuki...",
-            "generated_file": null,
-            "timestamp": "F05BPntv"
-        },
-        {
             "action": "Decrypt Text",
             "original_file": "ce3e4d40cf649ed479d7acc56aad8a...",
             "generated_file": null,
@@ -215,6 +209,30 @@
             "original_file": "stego_lsb_Hertech_Poster.png",
             "generated_file": null,
             "timestamp": "H4Kx/gWK"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "testingbrow",
+            "generated_file": null,
+            "timestamp": "tR6RQXCJ"
+        },
+        {
+            "action": "Decrypt Text (AES+Vigenere)",
+            "original_file": "xoJmxO+vskCayEu6n2hy+st/JfWeYW",
+            "generated_file": null,
+            "timestamp": "tHpMsxg7"
+        },
+        {
+            "action": "Encrypt Text (Vigenere+AES)",
+            "original_file": "aku orang baru disini",
+            "generated_file": null,
+            "timestamp": "1HMHZBmd"
+        },
+        {
+            "action": "Decrypt Text (AES+Vigenere)",
+            "original_file": "5JSXIhqjmmxtKZTV0f9Qf86Mei4V+a",
+            "generated_file": null,
+            "timestamp": "/zZrKGJH"
         }
     ]
 }

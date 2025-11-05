@@ -585,7 +585,7 @@ def encrypt_text():
                 result_text = base64.b64encode(encrypted_data).decode('utf-8')
                 
                 flash("Teks berhasil dienkripsi dengan Vigenere + AES-256 GCM!", "success")
-                add_history(session["username"], "Encrypt Text (Vigenere+AES)", input_text[:30]+"...")
+                add_history(session["username"], "Encrypt Text (Vigenere+AES)", input_text[:30]+"")
             
             # --- LOGIKA DEKRIPSI (BARU) ---
             elif action == "decrypt":
@@ -601,7 +601,7 @@ def encrypt_text():
                     result_text = vigenere_decrypt(decrypted_vigenere_text, VIGENERE_KEY)
                     
                     flash("Teks berhasil didekripsi!", "success")
-                    add_history(session["username"], "Decrypt Text (AES+Vigenere)", input_text[:30]+"...")
+                    add_history(session["username"], "Decrypt Text (AES+Vigenere)", input_text[:30]+"")
                     
                 except Exception as e:
                     print(f"Error dekripsi: {e}")

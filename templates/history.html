@@ -9,7 +9,12 @@
           {% if title.startswith('Riwayat Aktivitas SEMUA') %}
           <th>Pengguna</th>
           {% endif %}
-          <th>Aktivitas</th>
+          
+          <th>Aksi</th>
+          <th>Data Asli</th>
+          
+          <th>Status</th>
+          
         </tr>
       </thead>
       <tbody id="historyData">
@@ -19,11 +24,16 @@
             <td>{{ history.user }}</td>
             {% endif %}
             
-            <td>{{ history.action }} file: {{ history.original_file }} {% if history.generated_file %} -> {{ history.generated_file }}{% endif %}</td>
+            <td>{{ history.action }}</td>
+            <td>{{ history.original_file }}</td>
+            
+            <td>Berhasil</td>
             
         </tr>
         {% else %}
-        <tr><td colspan="{% if title.startswith('Riwayat Aktivitas SEMUA') %}2{% else %}1{% endif %}">Belum ada riwayat aktivitas.</td></tr>
+        
+        <tr><td colspan="{% if title.startswith('Riwayat Aktivitas SEMUA') %}4{% else %}3{% endif %}">Belum ada riwayat aktivitas.</td></tr>
+        
         {% endfor %}
       </tbody>
     </table>
