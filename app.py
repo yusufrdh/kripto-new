@@ -9,6 +9,7 @@ import base64
 import json
 import os
 import functools
+import datetime  
 from io import BytesIO
 from flask import (
     Flask,
@@ -81,7 +82,10 @@ def add_history(username, action, original_file, generated_file=None):
         "action": action,
         "original_file": original_file,
         "generated_file": generated_file,
-        "timestamp": base64.b64encode(get_random_bytes(6)).decode('utf-8')
+        # --- PERUBAHAN DI SINI ---
+        # Menggunakan format YYYY-MM-DD HH:MM
+        "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        # "timestamp": datetime.datetime.now().isoformat() # <-- KODE LAMA
     })
     save_data(history_data, db_path)
 
@@ -722,17 +726,18 @@ def encrypt_image():
     )
 
 
+# --- PERUBAHAN BESAR DI RUTE INI ---
 @app.route("/encrypt_file", methods=["GET", "POST"])
 @login_required
 def encrypt_file():
     """Halaman untuk enkripsi dan dekripsi file (RSA Hybrid) - VERSI AMAN."""
     
-    encrypt_download_filename = None
+    # Variabel encrypt_download_filename sudah tidak diperlukan lagi
     
     if request.method == "POST":
         action = request.form.get("action") 
         
-        # --- LOGIKA ENKRIPSI (Tidak berubah, ini sudah aman) ---
+        # --- LOGIKA ENKRIPSI (MODIFIKASI KEAMANAN) ---
         if action == "encrypt":
             try:
                 file = request.files.get("encrypt_file") 
@@ -757,26 +762,34 @@ def encrypt_file():
                 encrypted_data = len(encrypted_session_key).to_bytes(4, byteorder='big') + encrypted_session_key + file_ciphertext
                 
                 output_filename = f"hybrid_rsa_aes_{secure_filename(file.filename)}.bin"
-                output_path = os.path.join(app.config["GENERATED_FOLDER"], output_filename)
-                
-                with open(output_path, "wb") as f:
-                    f.write(encrypted_data)
 
-                flash("File berhasil dienkripsi secara Hybrid (RSA-AES)!", "success")
-                encrypt_download_filename = output_filename
-                add_history(session["username"], "Encrypt File (RSA Hybrid)", file.filename, output_filename)
+                # --- PERUBAHAN INTI (DARI DISK KE MEMORI) ---
+                
+                # 1. Buat file di memori, BUKAN di disk
+                file_in_memory = BytesIO(encrypted_data)
+
+                # 2. Catat history (tandai sebagai in-memory)
+                add_history(session["username"], "Encrypt File (RSA Hybrid)", file.filename, output_filename + " (in-memory)")
+                
+                flash("File berhasil dienkripsi secara Hybrid (RSA-AES)!", "success") # Catatan: Flash mungkin tidak selalu terlihat oleh user
+                
+                # 3. Langsung kirim file ke pengguna, JANGAN SIMPAN KE DISK
+                return send_file(
+                    file_in_memory,
+                    download_name=output_filename,
+                    as_attachment=True,
+                    mimetype='application/octet-stream'
+                )
+                # --- AKHIR PERUBAHAN ---
 
             except Exception as e:
                 flash(f"Terjadi error saat enkripsi: {e}", "error")
+                return redirect(url_for("encrypt_file")) # Redirect jika error
             
-            # Setelah enkripsi, render template lagi dengan link download
-            return render_template(
-                "encrypt_file.html", 
-                encrypt_download_file=encrypt_download_filename,
-                decrypt_download_file=None # Pastikan ini ada
-            )
+            # Blok render_template di bawah ini tidak lagi diperlukan karena kita
+            # langsung mengirim file atau me-redirect jika terjadi error.
         
-        # --- LOGIKA DEKRIPSI (MODIFIKASI KEAMANAN) ---
+        # --- LOGIKA DEKRIPSI (Sudah aman, tidak berubah) ---
         elif action == "decrypt":
             try:
                 file = request.files.get("decrypt_file") 
@@ -799,7 +812,6 @@ def encrypt_file():
                 # 3. Dekripsi File dengan Symmetric Key (AES-256 GCM)
                 decrypted_data = aes_decrypt_gcm(session_key, file_ciphertext)
                 
-                # --- PERUBAHAN INTI ---
                 # Menentukan nama file output
                 original_filename = secure_filename(file.filename).replace("hybrid_rsa_aes_", "").replace(".bin", "")
                 output_filename = f"decrypted_{original_filename}"
@@ -817,18 +829,16 @@ def encrypt_file():
                     as_attachment=True,
                     mimetype='application/octet-stream' # Tipe aman untuk semua file
                 )
-                # --- AKHIR PERUBAHAN ---
 
             except Exception as e:
                 print(f"Error dekripsi file: {e}")
                 flash(f"Terjadi error saat dekripsi. Pastikan file adalah file enkripsi Hybrid RSA-AES yang valid: {e}", "error")
-                # Jika gagal, kembali ke halaman
                 return redirect(url_for("encrypt_file"))
 
     # Jika method GET (pertama kali load halaman)
     return render_template(
         "encrypt_file.html", 
-        encrypt_download_file=None,
+        encrypt_download_file=None, # <-- Diubah menjadi None
         decrypt_download_file=None
     )
     
@@ -847,26 +857,18 @@ def history():
                 item_copy["user"] = username # Tambahkan info user
                 all_history.append(item_copy)
         user_history = all_history
-        # Sorting history. Karena timestamp hanya random base64, ini akan mengurutkan secara leksikografis (sebagai upaya terbaik)
-        user_history.sort(key=lambda x: x["timestamp"], reverse=True) 
+        # Sorting history. Karena timestamp sekarang adalah ISO string, ini akan mengurutkan secara kronologis
+        user_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True) # .get untuk keamanan
         title = "Riwayat Aktivitas SEMUA Pengguna (Admin)"
     else:
         # MEMBER: Hanya melihat history-nya sendiri
         user_history = history_db.get(session["username"], [])
-        user_history.reverse() 
+        # Gunakan sort() agar konsisten dengan Admin
+        user_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True) # .get untuk keamanan
         title = "Riwayat Aktivitas Anda"
     
     return render_template("history.html", history_list=user_history, title=title) # MODIFIED: Meneruskan 'title'
 
-# =====================================================================
-# RUTE DOWNLOAD
-# =====================================================================
-
-@app.route("/download/generated/<filename>")
-@login_required
-def download_generated_file(filename):
-    """Rute untuk men-download file dari folder generated."""
-    return send_from_directory(app.config["GENERATED_FOLDER"], filename, as_attachment=True)
 
 # =====================================================================
 # MENJALANKAN APLIKASI

@@ -1,238 +1,52 @@
 {
     "admin": [
         {
-            "action": "Encrypt Text",
-            "original_file": "asdasd...",
-            "generated_file": null,
-            "timestamp": "xz8n+WNh"
-        },
-        {
-            "action": "Encrypt Text",
-            "original_file": "asdasd...",
-            "generated_file": null,
-            "timestamp": "ougrp15A"
-        },
-        {
-            "action": "Decrypt Text",
-            "original_file": "510a53c4d56cdc415baf906c7b5264...",
-            "generated_file": null,
-            "timestamp": "SXzGyBjB"
-        },
-        {
-            "action": "Decrypt Text",
-            "original_file": "ce3e4d40cf649ed479d7acc56aad8a...",
-            "generated_file": null,
-            "timestamp": "WHAXE/v/"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "arduino.htm",
-            "generated_file": "encrypted_arduino.htm.bin",
-            "timestamp": "bMQKGXZQ"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "arduino.htm",
-            "generated_file": "encrypted_arduino.htm.bin",
-            "timestamp": "Yrif4bOO"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "arduino.htm",
-            "generated_file": "encrypted_arduino.htm.bin",
-            "timestamp": "e1OlpKur"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "arduino.htm",
-            "generated_file": "encrypted_arduino.htm.bin",
-            "timestamp": "Rb1nhyup"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_arduino.htm.bin",
-            "generated_file": "decrypted_arduino.htm",
-            "timestamp": "CmOXi8AY"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_arduino.htm.bin",
-            "generated_file": "decrypted_arduino.htm",
-            "timestamp": "gy3o51J0"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_arduino.htm.bin",
-            "generated_file": "decrypted_arduino.htm",
-            "timestamp": "ChLJvOKe"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_arduino.htm.bin",
-            "generated_file": "decrypted_arduino.htm",
-            "timestamp": "GB6c4PIi"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "PERANCANGAN INFRASTRUKTUR WEB SERVER DAN DATABASE.pdf",
-            "generated_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
-            "timestamp": "tb4fs+5w"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
-            "generated_file": "decrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf",
-            "timestamp": "mcs5pDVu"
-        },
-        {
-            "action": "Encrypt File",
-            "original_file": "Public.pem",
-            "generated_file": "encrypted_Public.pem.bin",
-            "timestamp": "fklRYVpu"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_Public.pem.bin",
-            "generated_file": "decrypted_Public.pem",
-            "timestamp": "7JPeVlFU"
-        },
-        {
-            "action": "Decrypt File",
-            "original_file": "encrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf.bin",
-            "generated_file": "decrypted_PERANCANGAN_INFRASTRUKTUR_WEB_SERVER_DAN_DATABASE.pdf",
-            "timestamp": "ZbbO1yBY"
-        },
-        {
-            "action": "Steganography Encrypt",
-            "original_file": "Perception_Layer_Lapisan_FisikPerangkat.png",
-            "generated_file": "stego_Perception_Layer_Lapisan_FisikPerangkat.png.png",
-            "timestamp": "Qv6KoNUR"
-        },
-        {
-            "action": "Steganography Encrypt",
-            "original_file": "Hertech_Poster.jpg",
-            "generated_file": "stego_Hertech_Poster.png",
-            "timestamp": "S0+we0zu"
-        },
-        {
-            "action": "Steganography Decrypt",
-            "original_file": "stego_Hertech_Poster.png",
-            "generated_file": null,
-            "timestamp": "hGoT43BF"
-        },
-        {
             "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "dddddddddd...",
+            "original_file": "aku buaya",
             "generated_file": null,
-            "timestamp": "DDkkMpok"
+            "timestamp": "2025-11-05 18:55"
         },
         {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "sdsds...",
+            "action": "Decrypt Text (AES+Vigenere)",
+            "original_file": "NyROrWTkoPq4QJ9MWTT/wr2W/Asy2m",
             "generated_file": null,
-            "timestamp": "jnGROk5j"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "sdsds...",
-            "generated_file": null,
-            "timestamp": "q/0ji8/x"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "sdsds...",
-            "generated_file": null,
-            "timestamp": "cFJltyKs"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "sdsds...",
-            "generated_file": null,
-            "timestamp": "SG99+jOo"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "sdsds...",
-            "generated_file": null,
-            "timestamp": "F60aMUhd"
+            "timestamp": "2025-11-05 18:55"
         },
         {
             "action": "Encrypt File (RSA Hybrid)",
-            "original_file": "TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf",
-            "generated_file": "hybrid_rsa_aes_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf.bin",
-            "timestamp": "/H5f5xZ2"
+            "original_file": "Tugas Simulator Elektronika dan IoT.docx",
+            "generated_file": "hybrid_rsa_aes_Tugas_Simulator_Elektronika_dan_IoT.docx.bin (in-memory)",
+            "timestamp": "2025-11-05 18:56"
+        },
+        {
+            "action": "Encrypt File (RSA Hybrid)",
+            "original_file": "Tugas Simulator Elektronika dan IoT.docx",
+            "generated_file": "hybrid_rsa_aes_Tugas_Simulator_Elektronika_dan_IoT.docx.bin (in-memory)",
+            "timestamp": "2025-11-05 18:56"
+        },
+        {
+            "action": "Encrypt File (RSA Hybrid)",
+            "original_file": "LAPORAN TUGAS ARSITEKTUR IoT.pdf",
+            "generated_file": "hybrid_rsa_aes_LAPORAN_TUGAS_ARSITEKTUR_IoT.pdf.bin (in-memory)",
+            "timestamp": "2025-11-05 18:56"
         },
         {
             "action": "Decrypt File (RSA Hybrid)",
-            "original_file": "hybrid_rsa_aes_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf.bin",
-            "generated_file": "decrypted_TRANSKRIP-SEMENTARA_2025-11-05T10_16_20.455Z.pdf",
-            "timestamp": "14PwIoLg"
+            "original_file": "hybrid_rsa_aes_LAPORAN_TUGAS_ARSITEKTUR_IoT.pdf.bin",
+            "generated_file": "decrypted_LAPORAN_TUGAS_ARSITEKTUR_IoT.pdf (in-memory)",
+            "timestamp": "2025-11-05 18:56"
         },
         {
             "action": "LSB Stego Encrypt",
-            "original_file": "Perception_Layer_Lapisan_FisikPerangkat.png",
-            "generated_file": "stego_lsb_Perception_Layer_Lapisan_FisikPerangkat.png",
-            "timestamp": "Mvr7yRdy"
+            "original_file": "Screenshot_2025-10-23_090226.png",
+            "generated_file": "stego_lsb_Screenshot_2025-10-23_090226.png (in-memory)",
+            "timestamp": "2025-11-05 18:56"
         },
         {
             "action": "LSB Stego Decrypt",
-            "original_file": "stego_lsb_Perception_Layer_Lapisan_FisikPerangkat.png",
+            "original_file": "stego_lsb_Screenshot_2025-10-23_090226.png",
             "generated_file": null,
-            "timestamp": "8NVXmljM"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "ddd...",
-            "generated_file": null,
-            "timestamp": "T9QMF/BR"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "adada...",
-            "generated_file": null,
-            "timestamp": "BDPRiF9y"
-        },
-        {
-            "action": "Decrypt Text (AES+Vigenere)",
-            "original_file": "Bt8+Jc6rG7m95HR49qSeWg1fVZsVZw...",
-            "generated_file": null,
-            "timestamp": "9J3mz1TJ"
-        },
-        {
-            "action": "LSB Stego Encrypt",
-            "original_file": "Hertech_Poster.jpg",
-            "generated_file": "stego_lsb_Hertech_Poster.png (in-memory)",
-            "timestamp": "vZke6aes"
-        },
-        {
-            "action": "LSB Stego Decrypt",
-            "original_file": "stego_lsb_Hertech_Poster.png",
-            "generated_file": null,
-            "timestamp": "H4Kx/gWK"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "testingbrow",
-            "generated_file": null,
-            "timestamp": "tR6RQXCJ"
-        },
-        {
-            "action": "Decrypt Text (AES+Vigenere)",
-            "original_file": "xoJmxO+vskCayEu6n2hy+st/JfWeYW",
-            "generated_file": null,
-            "timestamp": "tHpMsxg7"
-        },
-        {
-            "action": "Encrypt Text (Vigenere+AES)",
-            "original_file": "aku orang baru disini",
-            "generated_file": null,
-            "timestamp": "1HMHZBmd"
-        },
-        {
-            "action": "Decrypt Text (AES+Vigenere)",
-            "original_file": "5JSXIhqjmmxtKZTV0f9Qf86Mei4V+a",
-            "generated_file": null,
-            "timestamp": "/zZrKGJH"
+            "timestamp": "2025-11-05 18:57"
         }
     ]
 }
